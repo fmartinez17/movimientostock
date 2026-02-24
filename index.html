@@ -60,10 +60,13 @@
   <script src="https://unpkg.com/@ericblade/quagga2/dist/quagga.min.js"></script>
 
   <script>
-    // === CONFIGURÁ ESTO ===
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz1pb5qqeH8ANUUga36QR72KWq1CEofStjCb4Bc0bEnpq9LnCst4vo24vSX48OCb7zq/exec";
+    // === CONFIGURACIÓN ===
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxy5EYAU7K8fWOTJvp2PUwqQrpRtjzErK5PnTAeQW52p9kRmHsNxHZcrMWYT37khwgZ/exec";
     const SECRET = "PUBLI_2026_Stock!"; // igual que Code.gs
-    const CATALOG_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ0_lnQKiqRA7UmsoFGAHvxlRoRzXM4tpuZCHD9Hc3HzU98c5l9KQ62-3pqxwQd8wxe0Ll81k0HpvY8/pub?output=csv";
+
+    // ID del Google Sheet donde está la pestaña "catalogo"
+    const SPREADSHEET_ID = "1xdyknuy-wQID0VHMCEuvYc4fz0ljZTGfL7ek7U_M1wE";
+    const CATALOG_SHEET_NAME = "catalogo";
 
     const msgEl = document.getElementById('msg');
     const productoEl = document.getElementById('producto');
@@ -72,9 +75,7 @@
     const btnGuardar = document.getElementById('btnGuardar');
 
     let scanning = false;
-
-    // catalogoMap[barcode] = { sku, descripcion }
-    let catalogoMap = {};
+    let catalogoMap = {}; // catalogoMap[barcode] = { sku, descripcion }
 
     function setMsg(t, ok=true) {
       msgEl.className = ok ? 'ok' : 'err';
@@ -89,38 +90,35 @@
       productoEl.textContent = `Producto: ${p.descripcion || "-"} | SKU: ${p.sku || "-"}`;
     }
 
-    // Parser simple (ok si no hay comas dentro de campos)
-    function parseCSVLine(line) {
-      return line.split(",").map(s => s.replace(/^"|"$/g, "").trim());
-    }
-
     async function cargarCatalogo() {
       try {
         setMsg("Cargando catálogo...", true);
 
-        const res = await fetch(CATALOG_CSV_URL, { cache: "no-store" });
-        if (!res.ok) throw new Error("No se pudo descargar el catálogo");
-        const text = await res.text();
+        const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=${encodeURIComponent(CATALOG_SHEET_NAME)}&tqx=out:json`;
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) throw new Error("No se pudo descargar catálogo (gviz)");
 
-        const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-        if (lines.length < 2) throw new Error("Catálogo vacío");
+        const raw = await res.text();
+        const jsonText = raw.substring(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
+        const data = JSON.parse(jsonText);
 
-        const header = parseCSVLine(lines[0]).map(h => h.toLowerCase());
-        const idxBarcode = header.indexOf("barcode");
-        const idxSku = header.indexOf("sku");
-        const idxDesc = header.indexOf("descripcion");
+        const table = data.table;
+        const cols = table.cols.map(c => (c.label || "").toLowerCase().trim());
 
-        if (idxBarcode === -1) throw new Error("Falta columna 'barcode' en catálogo");
+        const idxBarcode = cols.indexOf("barcode");
+        const idxSku = cols.indexOf("sku");
+        const idxDesc = cols.indexOf("descripcion");
+        if (idxBarcode === -1) throw new Error("En catalogo falta columna 'barcode'");
 
         const map = {};
-        for (let i = 1; i < lines.length; i++) {
-          const cols = parseCSVLine(lines[i]);
-          const bc = (cols[idxBarcode] || "").trim();
+        for (const row of table.rows) {
+          const cells = row.c || [];
+          const bc = (cells[idxBarcode]?.v ?? "").toString().trim();
           if (!bc) continue;
 
           map[bc] = {
-            sku: (idxSku >= 0 ? cols[idxSku] : "") || "",
-            descripcion: (idxDesc >= 0 ? cols[idxDesc] : "") || ""
+            sku: (idxSku >= 0 ? (cells[idxSku]?.v ?? "").toString().trim() : ""),
+            descripcion: (idxDesc >= 0 ? (cells[idxDesc]?.v ?? "").toString().trim() : "")
           };
         }
 
@@ -177,7 +175,7 @@
         setMsg("Apuntá al código…", true);
       });
 
-      // Evita que se acumulen handlers si escaneás varias veces
+      // Evita acumular handlers
       try { Quagga.offDetected(onDetected); } catch(e){}
       Quagga.onDetected(onDetected);
     }
@@ -213,7 +211,7 @@
       else stopScanner();
     });
 
-    // Validar también si se escribe manual
+    // Validar si se escribe manual
     barcodeEl.addEventListener('change', () => {
       const code = barcodeEl.value.trim();
       if (!code) { setProducto(null); return; }
@@ -239,7 +237,6 @@
         return;
       }
 
-      // Validación contra catálogo antes de enviar
       const v = validarBarcodeLocal(barcode);
       if (!v.ok) {
         setProducto(null);
@@ -257,7 +254,6 @@
         barcode,
         cantidad,
         observacion,
-        // mandamos datos del producto para guardarlos en movimientos
         sku: v.producto.sku,
         descripcion: v.producto.descripcion,
         usuario: "" // opcional
