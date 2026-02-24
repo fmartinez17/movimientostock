@@ -14,6 +14,7 @@
     .err { color: #b00020; margin-top: 10px; }
     .small { font-size: 13px; opacity: 0.9; margin-top: 6px; line-height: 1.35; }
     .box { background:#f5f5f5; padding:10px; border-radius:10px; margin-top:10px; }
+    .hint { background:#eef; padding:10px; border-radius:10px; margin-top:10px; }
   </style>
 </head>
 <body>
@@ -36,6 +37,10 @@
   </div>
 
   <div id="scanner"></div>
+
+  <div class="hint small">
+    Solo se acepta el escaneo si el código está dentro del centro del cuadro (para evitar lecturas fuera de pantalla).
+  </div>
 
   <div id="producto" class="box small"></div>
   <div class="small">Tip: buena luz + código quieto y de frente.</div>
@@ -62,9 +67,9 @@
   <script>
     // === CONFIGURACIÓN ===
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxy5EYAU7K8fWOTJvp2PUwqQrpRtjzErK5PnTAeQW52p9kRmHsNxHZcrMWYT37khwgZ/exec";
-    const SECRET = "PUBLI_2026_Stock!"; // igual que Code.gs
+    const SECRET = "PUBLI_2026_Stock!";
 
-    // ID del Google Sheet donde está la pestaña "catalogo"
+    // Catálogo (hoja "catalogo" en el mismo Sheet)
     const SPREADSHEET_ID = "1xdyknuy-wQID0VHMCEuvYc4fz0ljZTGfL7ek7U_M1wE";
     const CATALOG_SHEET_NAME = "catalogo";
 
@@ -83,59 +88,78 @@
     }
 
     function setProducto(p) {
-      if (!p) {
-        productoEl.textContent = "";
-        return;
-      }
+      if (!p) { productoEl.textContent = ""; return; }
       productoEl.textContent = `Producto: ${p.descripcion || "-"} | SKU: ${p.sku || "-"}`;
     }
 
+    // === CARGA CATÁLOGO (robusto, usa columnas A,B,C) ===
     async function cargarCatalogo() {
-  try {
-    setMsg("Cargando catálogo...", true);
+      try {
+        setMsg("Cargando catálogo...", true);
 
-    // Pedimos SOLO A,B,C para evitar líos con headers/labels
-    const tq = encodeURIComponent("select A,B,C");
-    const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=${encodeURIComponent(CATALOG_SHEET_NAME)}&tq=${tq}&tqx=out:json`;
+        const tq = encodeURIComponent("select A,B,C");
+        const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=${encodeURIComponent(CATALOG_SHEET_NAME)}&tq=${tq}&tqx=out:json`;
 
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) throw new Error("No se pudo descargar catálogo (gviz)");
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) throw new Error("No se pudo descargar catálogo (gviz)");
 
-    const raw = await res.text();
-    const jsonText = raw.substring(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
-    const data = JSON.parse(jsonText);
+        const raw = await res.text();
+        const jsonText = raw.substring(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
+        const data = JSON.parse(jsonText);
 
-    const rows = data?.table?.rows || [];
+        const rows = data?.table?.rows || [];
+        const map = {};
 
-    const map = {};
-    for (const r of rows) {
-      const c = r.c || [];
-      const bc = (c[0]?.v ?? "").toString().trim();   // Col A
-      const sku = (c[1]?.v ?? "").toString().trim();  // Col B
-      const desc = (c[2]?.v ?? "").toString().trim(); // Col C
+        for (const r of rows) {
+          const c = r.c || [];
+          const bc = (c[0]?.v ?? "").toString().trim();   // A: barcode
+          const sku = (c[1]?.v ?? "").toString().trim();  // B: sku
+          const desc = (c[2]?.v ?? "").toString().trim(); // C: descripcion
+          if (!bc) continue;
+          map[bc] = { sku, descripcion: desc };
+        }
 
-      if (!bc) continue;
+        catalogoMap = map;
+        setMsg(`✅ Catálogo cargado (${Object.keys(catalogoMap).length} productos)`, true);
 
-      map[bc] = { sku, descripcion: desc };
+      } catch (e) {
+        console.error(e);
+        setMsg("❌ No pude cargar el catálogo: " + (e.message || e), false);
+      }
     }
-
-    catalogoMap = map;
-
-    console.log("Catalogo keys:", Object.keys(catalogoMap));
-    console.log("Ej 7730530191475:", catalogoMap["7730530191475"]);
-
-    setMsg(`✅ Catálogo cargado (${Object.keys(catalogoMap).length} productos)`, true);
-
-  } catch (e) {
-    console.error(e);
-    setMsg("❌ No pude cargar el catálogo: " + (e.message || e), false);
-  }
-}
 
     function validarBarcodeLocal(barcode) {
       const p = catalogoMap[barcode];
       if (!p) return { ok: false, producto: null };
       return { ok: true, producto: p };
+    }
+
+    // === OPCIÓN C: Aceptar sólo si cae en zona central ===
+    function isCenterHit(result) {
+      const box = result?.box;
+      if (!box) return true; // si no hay box, no bloqueamos
+
+      const xs = box.map(p => p.x);
+      const ys = box.map(p => p.y);
+
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+
+      const overlay = Quagga.canvas?.dom?.overlay;
+      if (!overlay) return true;
+
+      const w = overlay.width;
+      const h = overlay.height;
+
+      // 60% central (ajustable)
+      const left = w * 0.2;
+      const right = w * 0.8;
+      const top = h * 0.2;
+      const bottom = h * 0.8;
+
+      return (minX >= left && maxX <= right && minY >= top && maxY <= bottom);
     }
 
     function startScanner() {
@@ -176,7 +200,6 @@
         setMsg("Apuntá al código…", true);
       });
 
-      // Evita acumular handlers
       try { Quagga.offDetected(onDetected); } catch(e){}
       Quagga.onDetected(onDetected);
     }
@@ -189,6 +212,9 @@
     }
 
     function onDetected(result) {
+      // ✅ Solo aceptar si está en el centro
+      if (!isCenterHit(result)) return;
+
       const code = result?.codeResult?.code;
       if (!code) return;
 
@@ -257,7 +283,7 @@
         observacion,
         sku: v.producto.sku,
         descripcion: v.producto.descripcion,
-        usuario: "" // opcional
+        usuario: ""
       };
 
       try {
@@ -270,7 +296,6 @@
 
         setMsg("✅ Enviado. Revisá la Sheet (movimientos).", true);
 
-        // Limpieza rápida
         barcodeEl.value = "";
         document.getElementById('cantidad').value = 1;
         document.getElementById('observacion').value = "";
@@ -284,7 +309,6 @@
       }
     });
 
-    // Cargar catálogo al iniciar
     cargarCatalogo();
   </script>
 </body>
