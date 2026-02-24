@@ -7,20 +7,22 @@
     body { font-family: Arial, sans-serif; margin: 16px; }
     label { display:block; margin-top: 12px; font-weight: 600; }
     input, select, textarea, button { width: 100%; padding: 12px; font-size: 16px; margin-top: 6px; }
-    #scanner { width: 100%; height: 300px; background:#000; border-radius: 12px; margin-top: 12px; overflow:hidden; position: relative; }
+    #scanner { width: 100%; height: 320px; background:#000; border-radius: 12px; margin-top: 12px; overflow:hidden; position: relative; }
     .row { display:flex; gap:10px; }
     .row > div { flex: 1; }
     .ok { color: green; margin-top: 10px; }
     .err { color: #b00020; margin-top: 10px; }
     .small { font-size: 13px; opacity: 0.9; margin-top: 6px; line-height: 1.35; }
     .box { background:#f5f5f5; padding:10px; border-radius:10px; margin-top:10px; }
+
+    /* Rectángulo de apunte: debe coincidir con inputStream.area */
     #aim {
       position:absolute;
       left: 10%;
       top: 18%;
       width: 80%;
       height: 64%;
-      border: 3px solid rgba(0,255,0,0.75);
+      border: 3px solid rgba(0,255,0,0.8);
       border-radius: 12px;
       box-sizing: border-box;
       pointer-events: none;
@@ -51,7 +53,7 @@
   </div>
 
   <div class="small">
-    Apuntá el código dentro del rectángulo verde. Se confirma cuando lee el MISMO código 2 veces seguidas.
+    Estricto: solo analiza dentro del rectángulo verde. Se confirma cuando lee el MISMO código 2 veces seguidas.
   </div>
 
   <div id="producto" class="box small"></div>
@@ -82,6 +84,9 @@
     const SPREADSHEET_ID = "1xdyknuy-wQID0VHMCEuvYc4fz0ljZTGfL7ek7U_M1wE";
     const CATALOG_SHEET_NAME = "catalogo";
 
+    // 👇 Debe coincidir con el rectángulo #aim
+    const AREA = { top: "18%", right: "10%", left: "10%", bottom: "18%" };
+
     const msgEl = document.getElementById('msg');
     const productoEl = document.getElementById('producto');
     const barcodeEl = document.getElementById('barcode');
@@ -91,11 +96,7 @@
     let scanning = false;
     let catalogoMap = {};
 
-    // box del último frame procesado
-    let lastBox = null;
-    let lastBoxAt = 0;
-
-    // confirmación por doble lectura
+    // doble lectura para confirmar
     let lastCode = "";
     let sameCount = 0;
 
@@ -125,7 +126,6 @@
 
         const rows = data?.table?.rows || [];
         const map = {};
-
         for (const r of rows) {
           const c = r.c || [];
           const bc = (c[0]?.v ?? "").toString().trim();
@@ -149,52 +149,14 @@
       return { ok: true, producto: p };
     }
 
-    function onProcessed(result) {
-      if (result && result.box) {
-        lastBox = result.box;
-        lastBoxAt = Date.now();
-      }
-    }
-
-    // Aceptar si el CENTRO del box cae dentro del rectángulo (más usable)
-    function isCenterHitUsable() {
-      if (!lastBox) return false;
-      if (Date.now() - lastBoxAt > 1200) return false;
-
-      const overlay = Quagga.canvas?.dom?.overlay;
-      if (!overlay) return false;
-
-      const w = overlay.width;
-      const h = overlay.height;
-
-      // Rectángulo central equivalente al #aim (10%-90% x, 18%-82% y)
-      const left = w * 0.10;
-      const right = w * 0.90;
-      const top = h * 0.18;
-      const bottom = h * 0.82;
-
-      const xs = lastBox.map(p => p.x);
-      const ys = lastBox.map(p => p.y);
-
-      const minX = Math.min(...xs);
-      const maxX = Math.max(...xs);
-      const minY = Math.min(...ys);
-      const maxY = Math.max(...ys);
-
-      const cx = (minX + maxX) / 2;
-      const cy = (minY + maxY) / 2;
-
-      return (cx >= left && cx <= right && cy >= top && cy <= bottom);
-    }
-
     function startScanner() {
       if (scanning) return;
       scanning = true;
       btnScan.textContent = "🛑 Detener";
       setMsg("Abriendo cámara...", true);
 
-      lastBox = null; lastBoxAt = 0;
-      lastCode = ""; sameCount = 0;
+      lastCode = "";
+      sameCount = 0;
 
       Quagga.init({
         inputStream: {
@@ -205,13 +167,8 @@
             width: { ideal: 1280 },
             height: { ideal: 720 }
           },
-          // Recorte central (más grande para que lo tome)
-          area: {
-            top: "18%",
-            right: "10%",
-            left: "10%",
-            bottom: "18%"
-          }
+          // ✅ Estricto REAL: Quagga analiza SOLO dentro del rectángulo
+          area: AREA
         },
         decoder: {
           readers: [
@@ -237,26 +194,20 @@
 
       try { Quagga.offDetected(onDetected); } catch(e){}
       Quagga.onDetected(onDetected);
-
-      try { Quagga.offProcessed(onProcessed); } catch(e){}
-      Quagga.onProcessed(onProcessed);
     }
 
     function stopScanner() {
       scanning = false;
       btnScan.textContent = "📷 Escanear";
       try { Quagga.offDetected(onDetected); } catch(e){}
-      try { Quagga.offProcessed(onProcessed); } catch(e){}
       try { Quagga.stop(); } catch(e){}
     }
 
     function onDetected(result) {
-      if (!isCenterHitUsable()) return;
-
       const code = result?.codeResult?.code;
       if (!code) return;
 
-      // Confirmar con doble lectura igual
+      // Confirmar por 2 lecturas iguales seguidas
       if (code === lastCode) sameCount++;
       else { lastCode = code; sameCount = 1; }
 
