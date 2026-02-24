@@ -54,7 +54,6 @@
     <div class="aim"></div>
   </div>
 
-  <div class="small" id="fmt"></div>
   <div id="producto" class="box small"></div>
 
   <div class="row">
@@ -90,7 +89,6 @@
     const barcodeEl = document.getElementById("barcode");
     const productoEl = document.getElementById("producto");
     const msgEl = document.getElementById("msg");
-    const fmtEl = document.getElementById("fmt");
 
     let stream = null;
     let detector = null;
@@ -105,10 +103,22 @@
       msgEl.className = ok ? "ok" : "err";
       msgEl.textContent = t;
     }
-    function setProducto(p) {
-      if (!p) { productoEl.textContent = ""; return; }
-      productoEl.textContent = `Producto: ${p.descripcion || "-"} | SKU: ${p.sku || "-"}`;
-    }
+    function setProducto(p, barcode = "") {
+  if (!barcode) {
+    productoEl.textContent = "";
+    productoEl.style.color = "";
+    return;
+  }
+
+  if (!p) {
+    productoEl.textContent = `❌ Producto no encontrado en catálogo (${barcode})`;
+    productoEl.style.color = "#b00020";
+    return;
+  }
+
+  productoEl.textContent = `Producto: ${p.descripcion || "-"} | SKU: ${p.sku || "-"}`;
+  productoEl.style.color = "";
+}
 
     async function cargarCatalogo() {
       try {
@@ -155,7 +165,6 @@
       // Creamos detector con TODOS los formatos soportados
       detector = new BarcodeDetector({ formats });
 
-      fmtEl.textContent = "Formatos soportados: " + formats.join(", ");
     }
 
     async function startCamera() {
@@ -204,13 +213,6 @@
               barcodeEl.value = code;
 
               const v = validarBarcodeLocal(code);
-              if (!v.ok) {
-                setProducto(null);
-                setMsg("❌ No existe en catálogo: " + code, false);
-              } else {
-                setProducto(v.producto);
-                setMsg("✅ Escaneado y válido: " + code, true);
-              }
 
               // detener scan automáticamente (podés quitar esto si querés continuo)
               stopScan();
