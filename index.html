@@ -16,7 +16,6 @@
 
     .camWrap { position: relative; width: 100%; margin-top: 12px; }
     video { width: 100%; height: 320px; background:#000; border-radius: 12px; object-fit: cover; }
-    /* guía visual */
     .aim {
       position:absolute;
       left: 10%;
@@ -103,22 +102,24 @@
       msgEl.className = ok ? "ok" : "err";
       msgEl.textContent = t;
     }
+
+    // ✅ Hint unificado: producto OK o “no encontrado”
     function setProducto(p, barcode = "") {
-  if (!barcode) {
-    productoEl.textContent = "";
-    productoEl.style.color = "";
-    return;
-  }
+      if (!barcode) {
+        productoEl.textContent = "";
+        productoEl.style.color = "";
+        return;
+      }
 
-  if (!p) {
-    productoEl.textContent = `❌ Producto no encontrado en catálogo (${barcode})`;
-    productoEl.style.color = "#b00020";
-    return;
-  }
+      if (!p) {
+        productoEl.textContent = `❌ Producto no encontrado en catálogo (${barcode})`;
+        productoEl.style.color = "#b00020";
+        return;
+      }
 
-  productoEl.textContent = `Producto: ${p.descripcion || "-"} | SKU: ${p.sku || "-"}`;
-  productoEl.style.color = "";
-}
+      productoEl.textContent = `Producto: ${p.descripcion || "-"} | SKU: ${p.sku || "-"}`;
+      productoEl.style.color = "";
+    }
 
     async function cargarCatalogo() {
       try {
@@ -141,6 +142,7 @@
           if (!bc) continue;
           map[bc] = { sku, descripcion: desc };
         }
+
         catalogoMap = map;
         setMsg(`✅ Catálogo cargado (${Object.keys(catalogoMap).length} productos)`, true);
       } catch (e) {
@@ -158,17 +160,11 @@
       if (!("BarcodeDetector" in window)) {
         throw new Error("BarcodeDetector no disponible en este navegador. Probá Chrome en Android.");
       }
-
-      // Trae la lista REAL soportada por tu dispositivo
       const formats = await BarcodeDetector.getSupportedFormats();
-
-      // Creamos detector con TODOS los formatos soportados
       detector = new BarcodeDetector({ formats });
-
     }
 
     async function startCamera() {
-      // pedir cámara trasera si existe
       stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: "environment" },
@@ -196,14 +192,11 @@
       if (!scanning) return;
 
       try {
-        // detect() devuelve array de barcodes
         const barcodes = await detector.detect(videoEl);
 
         if (barcodes && barcodes.length) {
-          // tomamos el primero (podrías elegir por tamaño si querés)
           const code = (barcodes[0].rawValue || "").trim();
           if (code) {
-            // estabilidad: 2 lecturas iguales
             if (code === lastCode) sameCount++;
             else { lastCode = code; sameCount = 1; }
 
@@ -214,14 +207,21 @@
 
               const v = validarBarcodeLocal(code);
 
-              // detener scan automáticamente (podés quitar esto si querés continuo)
+              // ✅ Acá estaba el bug: ahora actualizamos el hint SIEMPRE
+              if (!v.ok) {
+                setProducto(null, code);
+                setMsg("❌ No existe en catálogo", false);
+              } else {
+                setProducto(v.producto, code);
+                setMsg("✅ Escaneado y válido", true);
+              }
+
               stopScan();
               return;
             }
           }
         }
       } catch (e) {
-        // algunos devices tiran errores intermitentes al detectar; no cortamos el loop
         console.warn(e);
       }
 
@@ -262,12 +262,19 @@
       else stopScan();
     });
 
+    // ✅ Validación manual con hint unificado
     barcodeEl.addEventListener("change", () => {
       const code = barcodeEl.value.trim();
-      if (!code) { setProducto(null); return; }
+      if (!code) { setProducto(null, ""); return; }
+
       const v = validarBarcodeLocal(code);
-      if (!v.ok) { setProducto(null); setMsg("❌ No existe en catálogo: " + code, false); }
-      else { setProducto(v.producto); setMsg("✅ Código válido: " + code, true); }
+      if (!v.ok) {
+        setProducto(null, code);
+        setMsg("❌ No existe en catálogo: " + code, false);
+      } else {
+        setProducto(v.producto, code);
+        setMsg("✅ Código válido: " + code, true);
+      }
     });
 
     btnGuardar.addEventListener("click", async () => {
@@ -284,7 +291,7 @@
 
       const v = validarBarcodeLocal(barcode);
       if (!v.ok) {
-        setProducto(null);
+        setProducto(null, barcode);
         setMsg("❌ No se puede guardar: barcode no existe en catálogo.", false);
         return;
       }
@@ -316,7 +323,7 @@
         barcodeEl.value = "";
         document.getElementById("cantidad").value = 1;
         document.getElementById("observacion").value = "";
-        setProducto(null);
+        setProducto(null, "");
       } catch (e) {
         console.error(e);
         setMsg("❌ No se pudo enviar: " + (e.message || e), false);
