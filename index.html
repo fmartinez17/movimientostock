@@ -2,11 +2,11 @@
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Escáner Movimientos (BarcodeDetector)</title>
+  <title>ESCÁNER MOVIMIENTOS</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 16px; }
+    body { font-family: Arial, sans-serif; margin: 16px; text-transform: uppercase; }
     label { display:block; margin-top: 12px; font-weight: 600; }
-    input, select, textarea, button { width: 100%; padding: 12px; font-size: 16px; margin-top: 6px; }
+    input, select, textarea, button { width: 100%; padding: 12px; font-size: 16px; margin-top: 6px; text-transform: uppercase; }
     .row { display:flex; gap:10px; }
     .row > div { flex: 1; }
     .ok { color: green; margin-top: 10px; }
@@ -27,25 +27,29 @@
       pointer-events: none;
       box-sizing: border-box;
     }
+
+    /* placeholder en mayúscula */
+    ::placeholder { text-transform: uppercase; }
   </style>
 </head>
 <body>
-  <h2>Registrar movimiento</h2>
+  <h2>REGISTRAR MOVIMIENTO</h2>
 
-  <label>Orden</label>
-  <input id="orden" placeholder="Ej: ORD-001" />
+  <label>ORDEN</label>
+  <input id="orden" inputmode="numeric" pattern="[0-9]*" placeholder="EJ: 12345" />
 
-  <label>Tipo de movimiento</label>
+  <label>TIPO DE MOVIMIENTO</label>
   <select id="tipo_mov">
+    <option value="" selected disabled>INGRESE TIPO DE MOVIMIENTO</option>
     <option value="SALIDA">SALIDA</option>
     <option value="ENTRADA">ENTRADA</option>
     <option value="AJUSTE">AJUSTE</option>
   </select>
 
-  <label>Código de barras</label>
+  <label>CÓDIGO DE BARRAS</label>
   <div class="row">
-    <div><input id="barcode" placeholder="Escaneá o escribí..." /></div>
-    <div><button id="btnScan" type="button">📷 Escanear</button></div>
+    <div><input id="barcode" placeholder="ESCANEÁ O ESCRIBÍ..." /></div>
+    <div><button id="btnScan" type="button">📷 ESCANEAR</button></div>
   </div>
 
   <div class="camWrap">
@@ -55,19 +59,14 @@
 
   <div id="producto" class="box small"></div>
 
-  <div class="row">
-    <div>
-      <label>Cantidad</label>
-      <input id="cantidad" type="number" min="1" step="1" value="1" />
-    </div>
-    <div>
-      <label>&nbsp;</label>
-      <button id="btnGuardar" type="button">✅ Guardar</button>
-    </div>
-  </div>
+  <label>CANTIDAD</label>
+  <input id="cantidad" type="number" min="1" step="1" value="1" />
 
-  <label>Observación (opcional)</label>
-  <textarea id="observacion" rows="2" placeholder="Notas..."></textarea>
+  <label>OBSERVACIÓN (OPCIONAL)</label>
+  <textarea id="observacion" rows="2" placeholder="NOTAS..."></textarea>
+
+  <!-- ✅ Botón guardar abajo de todo -->
+  <button id="btnGuardar" type="button">✅ GUARDAR</button>
 
   <div id="msg"></div>
 
@@ -88,6 +87,10 @@
     const barcodeEl = document.getElementById("barcode");
     const productoEl = document.getElementById("producto");
     const msgEl = document.getElementById("msg");
+    const ordenEl = document.getElementById("orden");
+    const tipoMovEl = document.getElementById("tipo_mov");
+    const obsEl = document.getElementById("observacion");
+    const cantidadEl = document.getElementById("cantidad");
 
     let stream = null;
     let detector = null;
@@ -100,24 +103,21 @@
 
     function setMsg(t, ok=true) {
       msgEl.className = ok ? "ok" : "err";
-      msgEl.textContent = t;
+      msgEl.textContent = (t || "").toString().toUpperCase();
     }
 
-    // ✅ Hint unificado: producto OK o “no encontrado”
     function setProducto(p, barcode = "") {
       if (!barcode) {
         productoEl.textContent = "";
         productoEl.style.color = "";
         return;
       }
-
       if (!p) {
-        productoEl.textContent = `❌ Producto no encontrado en catálogo (${barcode})`;
+        productoEl.textContent = (`❌ PRODUCTO NO ENCONTRADO EN CATÁLOGO (${barcode})`).toUpperCase();
         productoEl.style.color = "#b00020";
         return;
       }
-
-      productoEl.textContent = `Producto: ${p.descripcion || "-"} | SKU: ${p.sku || "-"}`;
+      productoEl.textContent = (`PRODUCTO: ${p.descripcion || "-"} | SKU: ${p.sku || "-"}`).toUpperCase();
       productoEl.style.color = "";
     }
 
@@ -127,7 +127,7 @@
         const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=${encodeURIComponent(CATALOG_SHEET_NAME)}&tq=${tq}&tqx=out:json`;
 
         const res = await fetch(url, { cache: "no-store" });
-        if (!res.ok) throw new Error("No se pudo descargar catálogo (gviz)");
+        if (!res.ok) throw new Error("NO SE PUDO DESCARGAR CATÁLOGO (GVIZ)");
         const raw = await res.text();
         const jsonText = raw.substring(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
         const data = JSON.parse(jsonText);
@@ -144,10 +144,10 @@
         }
 
         catalogoMap = map;
-        setMsg(`✅ Catálogo cargado (${Object.keys(catalogoMap).length} productos)`, true);
+        setMsg(`✅ CATÁLOGO CARGADO (${Object.keys(catalogoMap).length} PRODUCTOS)`, true);
       } catch (e) {
         console.error(e);
-        setMsg("❌ Catálogo: " + (e.message || e), false);
+        setMsg("❌ CATÁLOGO: " + (e.message || e), false);
       }
     }
 
@@ -158,7 +158,7 @@
 
     async function initDetector() {
       if (!("BarcodeDetector" in window)) {
-        throw new Error("BarcodeDetector no disponible en este navegador. Probá Chrome en Android.");
+        throw new Error("BARCODEDETECTOR NO DISPONIBLE. USÁ CHROME EN ANDROID.");
       }
       const formats = await BarcodeDetector.getSupportedFormats();
       detector = new BarcodeDetector({ formats });
@@ -200,20 +200,19 @@
             if (code === lastCode) sameCount++;
             else { lastCode = code; sameCount = 1; }
 
-            setMsg(`Viendo: ${code} (${sameCount}/${REQUIRED_SAME_READS})`, true);
+            setMsg(`VIENDO: ${code} (${sameCount}/${REQUIRED_SAME_READS})`, true);
 
             if (sameCount >= REQUIRED_SAME_READS) {
               barcodeEl.value = code;
 
               const v = validarBarcodeLocal(code);
 
-              // ✅ Acá estaba el bug: ahora actualizamos el hint SIEMPRE
               if (!v.ok) {
                 setProducto(null, code);
-                setMsg("❌ No existe en catálogo", false);
+                setMsg("❌ NO EXISTE EN CATÁLOGO", false);
               } else {
                 setProducto(v.producto, code);
-                setMsg("✅ Escaneado y válido", true);
+                setMsg("✅ ESCANEADO Y VÁLIDO", true);
               }
 
               stopScan();
@@ -231,8 +230,8 @@
     async function startScan() {
       if (scanning) return;
       scanning = true;
-      btnScan.textContent = "🛑 Detener";
-      setMsg("Abriendo cámara...", true);
+      btnScan.textContent = "🛑 DETENER";
+      setMsg("ABRIENDO CÁMARA...", true);
 
       lastCode = "";
       sameCount = 0;
@@ -240,12 +239,12 @@
       try {
         await initDetector();
         await startCamera();
-        setMsg("Apuntá al código dentro del rectángulo…", true);
+        setMsg("APUNTÁ AL CÓDIGO DENTRO DEL RECTÁNGULO…", true);
         rafId = requestAnimationFrame(scanLoop);
       } catch (e) {
         console.error(e);
         scanning = false;
-        btnScan.textContent = "📷 Escanear";
+        btnScan.textContent = "📷 ESCANEAR";
         setMsg("❌ " + (e.message || e), false);
         stopCamera();
       }
@@ -253,7 +252,7 @@
 
     function stopScan() {
       scanning = false;
-      btnScan.textContent = "📷 Escanear";
+      btnScan.textContent = "📷 ESCANEAR";
       stopCamera();
     }
 
@@ -262,7 +261,12 @@
       else stopScan();
     });
 
-    // ✅ Validación manual con hint unificado
+    // ✅ ORDEN solo números (bloquea letras)
+    ordenEl.addEventListener("input", () => {
+      ordenEl.value = ordenEl.value.replace(/\D/g, "");
+    });
+
+    // Validación manual con hint unificado
     barcodeEl.addEventListener("change", () => {
       const code = barcodeEl.value.trim();
       if (!code) { setProducto(null, ""); return; }
@@ -270,34 +274,34 @@
       const v = validarBarcodeLocal(code);
       if (!v.ok) {
         setProducto(null, code);
-        setMsg("❌ No existe en catálogo: " + code, false);
+        setMsg("❌ NO EXISTE EN CATÁLOGO: " + code, false);
       } else {
         setProducto(v.producto, code);
-        setMsg("✅ Código válido: " + code, true);
+        setMsg("✅ CÓDIGO VÁLIDO: " + code, true);
       }
     });
 
     btnGuardar.addEventListener("click", async () => {
-      const orden = document.getElementById("orden").value.trim();
-      const tipo_mov = document.getElementById("tipo_mov").value;
+      const orden = (ordenEl.value || "").trim(); // ya numérico
+      const tipo_mov = (tipoMovEl.value || "").trim().toUpperCase();
       const barcode = barcodeEl.value.trim();
-      const cantidad = document.getElementById("cantidad").value;
-      const observacion = document.getElementById("observacion").value.trim();
+      const cantidad = cantidadEl.value;
+      const observacion = (obsEl.value || "").trim().toUpperCase();
 
-      if (!orden || !barcode || !cantidad || Number(cantidad) <= 0) {
-        setMsg("Faltan datos (orden / barcode / cantidad).", false);
+      if (!orden || !tipo_mov || !barcode || !cantidad || Number(cantidad) <= 0) {
+        setMsg("FALTAN DATOS (ORDEN / TIPO MOV / BARCODE / CANTIDAD).", false);
         return;
       }
 
       const v = validarBarcodeLocal(barcode);
       if (!v.ok) {
         setProducto(null, barcode);
-        setMsg("❌ No se puede guardar: barcode no existe en catálogo.", false);
+        setMsg("❌ NO SE PUEDE GUARDAR: BARCODE NO EXISTE EN CATÁLOGO.", false);
         return;
       }
 
       btnGuardar.disabled = true;
-      setMsg("Enviando...", true);
+      setMsg("ENVIANDO...", true);
 
       const data = {
         secret: SECRET,
@@ -319,14 +323,14 @@
           body: JSON.stringify(data)
         });
 
-        setMsg("✅ Enviado. Revisá la Sheet (movimientos).", true);
+        setMsg("✅ ENVIADO. REVISÁ LA SHEET (MOVIMIENTOS).", true);
         barcodeEl.value = "";
-        document.getElementById("cantidad").value = 1;
-        document.getElementById("observacion").value = "";
+        cantidadEl.value = 1;
+        obsEl.value = "";
         setProducto(null, "");
       } catch (e) {
         console.error(e);
-        setMsg("❌ No se pudo enviar: " + (e.message || e), false);
+        setMsg("❌ NO SE PUDO ENVIAR: " + (e.message || e), false);
       } finally {
         btnGuardar.disabled = false;
       }
