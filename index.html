@@ -2,18 +2,32 @@
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Escáner Movimientos</title>
+  <title>Escáner Movimientos (BarcodeDetector)</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 16px; }
     label { display:block; margin-top: 12px; font-weight: 600; }
     input, select, textarea, button { width: 100%; padding: 12px; font-size: 16px; margin-top: 6px; }
-    #scanner { width: 100%; height: 320px; background:#000; border-radius: 12px; margin-top: 12px; overflow:hidden; position: relative; }
     .row { display:flex; gap:10px; }
     .row > div { flex: 1; }
     .ok { color: green; margin-top: 10px; }
     .err { color: #b00020; margin-top: 10px; }
     .small { font-size: 13px; opacity: 0.9; margin-top: 6px; line-height: 1.35; }
     .box { background:#f5f5f5; padding:10px; border-radius:10px; margin-top:10px; }
+
+    .camWrap { position: relative; width: 100%; margin-top: 12px; }
+    video { width: 100%; height: 320px; background:#000; border-radius: 12px; object-fit: cover; }
+    /* guía visual */
+    .aim {
+      position:absolute;
+      left: 10%;
+      top: 18%;
+      width: 80%;
+      height: 64%;
+      border: 3px solid rgba(0,255,0,0.75);
+      border-radius: 12px;
+      pointer-events: none;
+      box-sizing: border-box;
+    }
   </style>
 </head>
 <body>
@@ -35,36 +49,60 @@
     <div><button id="btnScan" type="button">📷 Escanear</button></div>
   </div>
 
-  <div id="scanner"></div>
-  <div class="small">Si detecta, vas a ver “Viendo: …” aunque no confirme.</div>
+  <div class="camWrap">
+    <video id="video" playsinline></video>
+    <div class="aim"></div>
+  </div>
 
+  <div class="small" id="fmt"></div>
   <div id="producto" class="box small"></div>
+
+  <div class="row">
+    <div>
+      <label>Cantidad</label>
+      <input id="cantidad" type="number" min="1" step="1" value="1" />
+    </div>
+    <div>
+      <label>&nbsp;</label>
+      <button id="btnGuardar" type="button">✅ Guardar</button>
+    </div>
+  </div>
+
+  <label>Observación (opcional)</label>
+  <textarea id="observacion" rows="2" placeholder="Notas..."></textarea>
+
   <div id="msg"></div>
 
-  <script src="https://unpkg.com/@ericblade/quagga2/dist/quagga.min.js"></script>
-
   <script>
-    // === CONFIGURACIÓN ===
+    // === CONFIG ===
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxy5EYAU7K8fWOTJvp2PUwqQrpRtjzErK5PnTAeQW52p9kRmHsNxHZcrMWYT37khwgZ/exec";
     const SECRET = "PUBLI_2026_Stock!";
 
     const SPREADSHEET_ID = "1xdyknuy-wQID0VHMCEuvYc4fz0ljZTGfL7ek7U_M1wE";
     const CATALOG_SHEET_NAME = "catalogo";
 
-    const msgEl = document.getElementById('msg');
-    const productoEl = document.getElementById('producto');
-    const barcodeEl = document.getElementById('barcode');
-    const btnScan = document.getElementById('btnScan');
+    // Confirmación por estabilidad
+    const REQUIRED_SAME_READS = 2;
 
+    const videoEl = document.getElementById("video");
+    const btnScan = document.getElementById("btnScan");
+    const btnGuardar = document.getElementById("btnGuardar");
+    const barcodeEl = document.getElementById("barcode");
+    const productoEl = document.getElementById("producto");
+    const msgEl = document.getElementById("msg");
+    const fmtEl = document.getElementById("fmt");
+
+    let stream = null;
+    let detector = null;
     let scanning = false;
-    let catalogoMap = {};
+    let rafId = null;
 
-    // Confirmación suave (no bloquea)
+    let catalogoMap = {};
     let lastCode = "";
     let sameCount = 0;
 
     function setMsg(t, ok=true) {
-      msgEl.className = ok ? 'ok' : 'err';
+      msgEl.className = ok ? "ok" : "err";
       msgEl.textContent = t;
     }
     function setProducto(p) {
@@ -76,7 +114,9 @@
       try {
         const tq = encodeURIComponent("select A,B,C");
         const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=${encodeURIComponent(CATALOG_SHEET_NAME)}&tq=${tq}&tqx=out:json`;
+
         const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) throw new Error("No se pudo descargar catálogo (gviz)");
         const raw = await res.text();
         const jsonText = raw.substring(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
         const data = JSON.parse(jsonText);
@@ -94,6 +134,7 @@
         catalogoMap = map;
         setMsg(`✅ Catálogo cargado (${Object.keys(catalogoMap).length} productos)`, true);
       } catch (e) {
+        console.error(e);
         setMsg("❌ Catálogo: " + (e.message || e), false);
       }
     }
@@ -103,7 +144,89 @@
       return p ? { ok: true, producto: p } : { ok: false, producto: null };
     }
 
-    function startScanner() {
+    async function initDetector() {
+      if (!("BarcodeDetector" in window)) {
+        throw new Error("BarcodeDetector no disponible en este navegador. Probá Chrome en Android.");
+      }
+
+      // Trae la lista REAL soportada por tu dispositivo
+      const formats = await BarcodeDetector.getSupportedFormats();
+
+      // Creamos detector con TODOS los formatos soportados
+      detector = new BarcodeDetector({ formats });
+
+      fmtEl.textContent = "Formatos soportados: " + formats.join(", ");
+    }
+
+    async function startCamera() {
+      // pedir cámara trasera si existe
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+      videoEl.srcObject = stream;
+      await videoEl.play();
+    }
+
+    function stopCamera() {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = null;
+
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+      }
+      videoEl.srcObject = null;
+    }
+
+    async function scanLoop() {
+      if (!scanning) return;
+
+      try {
+        // detect() devuelve array de barcodes
+        const barcodes = await detector.detect(videoEl);
+
+        if (barcodes && barcodes.length) {
+          // tomamos el primero (podrías elegir por tamaño si querés)
+          const code = (barcodes[0].rawValue || "").trim();
+          if (code) {
+            // estabilidad: 2 lecturas iguales
+            if (code === lastCode) sameCount++;
+            else { lastCode = code; sameCount = 1; }
+
+            setMsg(`Viendo: ${code} (${sameCount}/${REQUIRED_SAME_READS})`, true);
+
+            if (sameCount >= REQUIRED_SAME_READS) {
+              barcodeEl.value = code;
+
+              const v = validarBarcodeLocal(code);
+              if (!v.ok) {
+                setProducto(null);
+                setMsg("❌ No existe en catálogo: " + code, false);
+              } else {
+                setProducto(v.producto);
+                setMsg("✅ Escaneado y válido: " + code, true);
+              }
+
+              // detener scan automáticamente (podés quitar esto si querés continuo)
+              stopScan();
+              return;
+            }
+          }
+        }
+      } catch (e) {
+        // algunos devices tiran errores intermitentes al detectar; no cortamos el loop
+        console.warn(e);
+      }
+
+      rafId = requestAnimationFrame(scanLoop);
+    }
+
+    async function startScan() {
       if (scanning) return;
       scanning = true;
       btnScan.textContent = "🛑 Detener";
@@ -112,75 +235,95 @@
       lastCode = "";
       sameCount = 0;
 
-      Quagga.init({
-        inputStream: {
-          type: "LiveStream",
-          target: document.querySelector('#scanner'),
-          constraints: {
-            facingMode: "environment",
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          }
-        },
-        decoder: {
-          // ✅ SOLO EAN (tu código es EAN-13)
-          readers: ["ean_reader", "ean_8_reader"]
-        },
-        locate: true
-      }, function(err) {
-        if (err) {
-          setMsg("❌ Cámara: " + err.message, false);
-          stopScanner();
-          return;
-        }
-        Quagga.start();
-        setMsg("Apuntá al código…", true);
-      });
-
-      try { Quagga.offDetected(onDetected); } catch(e){}
-      Quagga.onDetected(onDetected);
+      try {
+        await initDetector();
+        await startCamera();
+        setMsg("Apuntá al código dentro del rectángulo…", true);
+        rafId = requestAnimationFrame(scanLoop);
+      } catch (e) {
+        console.error(e);
+        scanning = false;
+        btnScan.textContent = "📷 Escanear";
+        setMsg("❌ " + (e.message || e), false);
+        stopCamera();
+      }
     }
 
-    function stopScanner() {
+    function stopScan() {
       scanning = false;
       btnScan.textContent = "📷 Escanear";
-      try { Quagga.offDetected(onDetected); } catch(e){}
-      try { Quagga.stop(); } catch(e){}
+      stopCamera();
     }
 
-    function onDetected(result) {
-      const code = result?.codeResult?.code;
-      if (!code) return;
+    btnScan.addEventListener("click", () => {
+      if (!scanning) startScan();
+      else stopScan();
+    });
 
-      // Mostrar que está viendo algo (debug útil)
-      setMsg("Viendo: " + code, true);
-
-      // Confirmación: 2 iguales seguidas (suave)
-      if (code === lastCode) sameCount++;
-      else { lastCode = code; sameCount = 1; }
-
-      if (sameCount < 2) return;
-
-      barcodeEl.value = code;
-
+    barcodeEl.addEventListener("change", () => {
+      const code = barcodeEl.value.trim();
+      if (!code) { setProducto(null); return; }
       const v = validarBarcodeLocal(code);
-      if (!v.ok) {
-        setProducto(null);
-        setMsg("❌ No existe en catálogo: " + code, false);
-        stopScanner();
+      if (!v.ok) { setProducto(null); setMsg("❌ No existe en catálogo: " + code, false); }
+      else { setProducto(v.producto); setMsg("✅ Código válido: " + code, true); }
+    });
+
+    btnGuardar.addEventListener("click", async () => {
+      const orden = document.getElementById("orden").value.trim();
+      const tipo_mov = document.getElementById("tipo_mov").value;
+      const barcode = barcodeEl.value.trim();
+      const cantidad = document.getElementById("cantidad").value;
+      const observacion = document.getElementById("observacion").value.trim();
+
+      if (!orden || !barcode || !cantidad || Number(cantidad) <= 0) {
+        setMsg("Faltan datos (orden / barcode / cantidad).", false);
         return;
       }
 
-      setProducto(v.producto);
-      setMsg("✅ OK: " + code, true);
-      stopScanner();
-    }
+      const v = validarBarcodeLocal(barcode);
+      if (!v.ok) {
+        setProducto(null);
+        setMsg("❌ No se puede guardar: barcode no existe en catálogo.", false);
+        return;
+      }
 
-    btnScan.addEventListener('click', () => {
-      if (!scanning) startScanner();
-      else stopScanner();
+      btnGuardar.disabled = true;
+      setMsg("Enviando...", true);
+
+      const data = {
+        secret: SECRET,
+        orden,
+        tipo_mov,
+        barcode,
+        cantidad,
+        observacion,
+        sku: v.producto.sku,
+        descripcion: v.producto.descripcion,
+        usuario: ""
+      };
+
+      try {
+        await fetch(APPS_SCRIPT_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+
+        setMsg("✅ Enviado. Revisá la Sheet (movimientos).", true);
+        barcodeEl.value = "";
+        document.getElementById("cantidad").value = 1;
+        document.getElementById("observacion").value = "";
+        setProducto(null);
+      } catch (e) {
+        console.error(e);
+        setMsg("❌ No se pudo enviar: " + (e.message || e), false);
+      } finally {
+        btnGuardar.disabled = false;
+      }
     });
 
+    // init
     cargarCatalogo();
   </script>
 </body>
