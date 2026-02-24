@@ -7,14 +7,25 @@
     body { font-family: Arial, sans-serif; margin: 16px; }
     label { display:block; margin-top: 12px; font-weight: 600; }
     input, select, textarea, button { width: 100%; padding: 12px; font-size: 16px; margin-top: 6px; }
-    #scanner { width: 100%; height: 280px; background:#000; border-radius: 12px; margin-top: 12px; overflow:hidden; }
+    #scanner { width: 100%; height: 300px; background:#000; border-radius: 12px; margin-top: 12px; overflow:hidden; position: relative; }
     .row { display:flex; gap:10px; }
     .row > div { flex: 1; }
     .ok { color: green; margin-top: 10px; }
     .err { color: #b00020; margin-top: 10px; }
     .small { font-size: 13px; opacity: 0.9; margin-top: 6px; line-height: 1.35; }
     .box { background:#f5f5f5; padding:10px; border-radius:10px; margin-top:10px; }
-    .hint { background:#eef; padding:10px; border-radius:10px; margin-top:10px; }
+    /* Marco visible del área central (para apuntar) */
+    #aim {
+      position:absolute;
+      left: 18%;
+      top: 22%;
+      width: 64%;
+      height: 56%;
+      border: 3px solid rgba(0,255,0,0.8);
+      border-radius: 12px;
+      box-sizing: border-box;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -36,14 +47,15 @@
     <div><button id="btnScan" type="button">📷 Escanear</button></div>
   </div>
 
-  <div id="scanner"></div>
+  <div id="scanner">
+    <div id="aim"></div>
+  </div>
 
-  <div class="hint small">
-    Solo se acepta el escaneo si el código está dentro del centro del cuadro (para evitar lecturas fuera de pantalla).
+  <div class="small">
+    Modo estricto: solo escanea si el código está dentro del rectángulo verde.
   </div>
 
   <div id="producto" class="box small"></div>
-  <div class="small">Tip: buena luz + código quieto y de frente.</div>
 
   <div class="row">
     <div>
@@ -69,7 +81,7 @@
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxy5EYAU7K8fWOTJvp2PUwqQrpRtjzErK5PnTAeQW52p9kRmHsNxHZcrMWYT37khwgZ/exec";
     const SECRET = "PUBLI_2026_Stock!";
 
-    // Catálogo (hoja "catalogo" en el mismo Sheet)
+    // Catálogo
     const SPREADSHEET_ID = "1xdyknuy-wQID0VHMCEuvYc4fz0ljZTGfL7ek7U_M1wE";
     const CATALOG_SHEET_NAME = "catalogo";
 
@@ -80,7 +92,11 @@
     const btnGuardar = document.getElementById('btnGuardar');
 
     let scanning = false;
-    let catalogoMap = {}; // catalogoMap[barcode] = { sku, descripcion }
+    let catalogoMap = {};
+
+    // Para filtro estricto por box “real”
+    let lastBox = null;
+    let lastBoxAt = 0;
 
     function setMsg(t, ok=true) {
       msgEl.className = ok ? 'ok' : 'err';
@@ -92,7 +108,6 @@
       productoEl.textContent = `Producto: ${p.descripcion || "-"} | SKU: ${p.sku || "-"}`;
     }
 
-    // === CARGA CATÁLOGO (robusto, usa columnas A,B,C) ===
     async function cargarCatalogo() {
       try {
         setMsg("Cargando catálogo...", true);
@@ -112,9 +127,9 @@
 
         for (const r of rows) {
           const c = r.c || [];
-          const bc = (c[0]?.v ?? "").toString().trim();   // A: barcode
-          const sku = (c[1]?.v ?? "").toString().trim();  // B: sku
-          const desc = (c[2]?.v ?? "").toString().trim(); // C: descripcion
+          const bc = (c[0]?.v ?? "").toString().trim();   // A barcode
+          const sku = (c[1]?.v ?? "").toString().trim();  // B sku
+          const desc = (c[2]?.v ?? "").toString().trim(); // C descripcion
           if (!bc) continue;
           map[bc] = { sku, descripcion: desc };
         }
@@ -134,30 +149,37 @@
       return { ok: true, producto: p };
     }
 
-    // === OPCIÓN C: Aceptar sólo si cae en zona central ===
-    function isCenterHit(result) {
-      const box = result?.box;
-      if (!box) return true; // si no hay box, no bloqueamos
+    function onProcessed(result) {
+      if (result && result.box) {
+        lastBox = result.box;
+        lastBoxAt = Date.now();
+      }
+    }
 
-      const xs = box.map(p => p.x);
-      const ys = box.map(p => p.y);
+    function isCenterHitStrict() {
+      // Estricto: si no hay box reciente, no aceptamos
+      if (!lastBox) return false;
+      if (Date.now() - lastBoxAt > 350) return false; // más estricto (ms)
+
+      const overlay = Quagga.canvas?.dom?.overlay;
+      if (!overlay) return false;
+
+      const w = overlay.width;
+      const h = overlay.height;
+
+      // Centro estricto (más chico que antes)
+      const left = w * 0.18;
+      const right = w * 0.82;
+      const top = h * 0.22;
+      const bottom = h * 0.78;
+
+      const xs = lastBox.map(p => p.x);
+      const ys = lastBox.map(p => p.y);
 
       const minX = Math.min(...xs);
       const maxX = Math.max(...xs);
       const minY = Math.min(...ys);
       const maxY = Math.max(...ys);
-
-      const overlay = Quagga.canvas?.dom?.overlay;
-      if (!overlay) return true;
-
-      const w = overlay.width;
-      const h = overlay.height;
-
-      // 60% central (ajustable)
-      const left = w * 0.2;
-      const right = w * 0.8;
-      const top = h * 0.2;
-      const bottom = h * 0.8;
 
       return (minX >= left && maxX <= right && minY >= top && maxY <= bottom);
     }
@@ -168,6 +190,9 @@
       btnScan.textContent = "🛑 Detener";
       setMsg("Abriendo cámara...", true);
 
+      lastBox = null;
+      lastBoxAt = 0;
+
       Quagga.init({
         inputStream: {
           type: "LiveStream",
@@ -176,6 +201,13 @@
             facingMode: "environment",
             width: { ideal: 1280 },
             height: { ideal: 720 }
+          },
+          // ✅ Recorte: solo analiza el centro (estricto)
+          area: {
+            top: "22%",
+            right: "18%",
+            left: "18%",
+            bottom: "22%"
           }
         },
         decoder: {
@@ -197,23 +229,27 @@
           return;
         }
         Quagga.start();
-        setMsg("Apuntá al código…", true);
+        setMsg("Apuntá al código dentro del rectángulo verde…", true);
       });
 
       try { Quagga.offDetected(onDetected); } catch(e){}
       Quagga.onDetected(onDetected);
+
+      try { Quagga.offProcessed(onProcessed); } catch(e){}
+      Quagga.onProcessed(onProcessed);
     }
 
     function stopScanner() {
       scanning = false;
       btnScan.textContent = "📷 Escanear";
       try { Quagga.offDetected(onDetected); } catch(e){}
+      try { Quagga.offProcessed(onProcessed); } catch(e){}
       try { Quagga.stop(); } catch(e){}
     }
 
     function onDetected(result) {
-      // ✅ Solo aceptar si está en el centro
-      if (!isCenterHit(result)) return;
+      // ✅ filtro estricto (centro + box reciente)
+      if (!isCenterHitStrict()) return;
 
       const code = result?.codeResult?.code;
       if (!code) return;
@@ -238,7 +274,6 @@
       else stopScanner();
     });
 
-    // Validar si se escribe manual
     barcodeEl.addEventListener('change', () => {
       const code = barcodeEl.value.trim();
       if (!code) { setProducto(null); return; }
@@ -295,7 +330,6 @@
         });
 
         setMsg("✅ Enviado. Revisá la Sheet (movimientos).", true);
-
         barcodeEl.value = "";
         document.getElementById('cantidad').value = 1;
         document.getElementById('observacion').value = "";
