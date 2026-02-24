@@ -1,0 +1,178 @@
+<!doctype html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Escáner Movimientos</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 16px; }
+    label { display:block; margin-top: 12px; font-weight: 600; }
+    input, select, textarea, button { width: 100%; padding: 12px; font-size: 16px; margin-top: 6px; }
+    #scanner { width: 100%; height: 280px; background:#000; border-radius: 12px; margin-top: 12px; overflow:hidden; }
+    .row { display:flex; gap:10px; }
+    .row > div { flex: 1; }
+    .ok { color: green; margin-top: 10px; }
+    .err { color: #b00020; margin-top: 10px; }
+    .small { font-size: 13px; opacity: 0.85; margin-top: 6px; line-height: 1.35; }
+  </style>
+</head>
+<body>
+  <h2>Registrar movimiento</h2>
+
+  <label>Orden</label>
+  <input id="orden" placeholder="Ej: ORD-001" />
+
+  <label>Tipo de movimiento</label>
+  <select id="tipo_mov">
+    <option value="SALIDA">SALIDA</option>
+    <option value="ENTRADA">ENTRADA</option>
+    <option value="AJUSTE">AJUSTE</option>
+  </select>
+
+  <label>Código de barras</label>
+  <div class="row">
+    <div><input id="barcode" placeholder="Escaneá o escribí..." /></div>
+    <div><button id="btnScan" type="button">📷 Escanear</button></div>
+  </div>
+
+  <div id="scanner"></div>
+  <div class="small">Tip: buena luz + código quieto y de frente.</div>
+
+  <div class="row">
+    <div>
+      <label>Cantidad</label>
+      <input id="cantidad" type="number" min="1" step="1" value="1" />
+    </div>
+    <div>
+      <label>&nbsp;</label>
+      <button id="btnGuardar" type="button">✅ Guardar</button>
+    </div>
+  </div>
+
+  <label>Observación (opcional)</label>
+  <textarea id="observacion" rows="2" placeholder="Notas..."></textarea>
+
+  <div id="msg"></div>
+
+  <!-- Quagga2 -->
+  <script src="https://unpkg.com/@ericblade/quagga2/dist/quagga.min.js"></script>
+
+  <script>
+    // === CONFIGURÁ ESTO ===
+    const APPS_SCRIPT_URL = "PEGAR_ACA_TU_URL_/exec";
+    const SECRET = "CAMBIAME_ESTE_TOKEN"; // el mismo que pusiste en Code.gs
+
+    const msgEl = document.getElementById('msg');
+    const barcodeEl = document.getElementById('barcode');
+    const btnScan = document.getElementById('btnScan');
+    const btnGuardar = document.getElementById('btnGuardar');
+
+    let scanning = false;
+
+    function setMsg(t, ok=true) {
+      msgEl.className = ok ? 'ok' : 'err';
+      msgEl.textContent = t;
+    }
+
+    function startScanner() {
+      if (scanning) return;
+      scanning = true;
+      btnScan.textContent = "🛑 Detener";
+      setMsg("Abriendo cámara...", true);
+
+      Quagga.init({
+        inputStream: {
+          type: "LiveStream",
+          target: document.querySelector('#scanner'),
+          constraints: {
+            facingMode: "environment",
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        },
+        decoder: {
+          readers: [
+            "ean_reader",
+            "ean_8_reader",
+            "upc_reader",
+            "upc_e_reader",
+            "code_128_reader",
+            "code_39_reader"
+          ]
+        },
+        locate: true
+      }, function(err) {
+        if (err) {
+          console.error(err);
+          setMsg("❌ Error cámara: " + err.message, false);
+          stopScanner();
+          return;
+        }
+        Quagga.start();
+        setMsg("Apuntá al código…", true);
+      });
+
+      Quagga.onDetected(onDetected);
+    }
+
+    function stopScanner() {
+      scanning = false;
+      btnScan.textContent = "📷 Escanear";
+      try { Quagga.offDetected(onDetected); } catch(e){}
+      try { Quagga.stop(); } catch(e){}
+    }
+
+    function onDetected(result) {
+      const code = result?.codeResult?.code;
+      if (!code) return;
+      barcodeEl.value = code;
+      setMsg("✅ Escaneado: " + code, true);
+      stopScanner();
+    }
+
+    btnScan.addEventListener('click', () => {
+      if (!scanning) startScanner();
+      else stopScanner();
+    });
+
+    btnGuardar.addEventListener('click', async () => {
+      const data = {
+        secret: SECRET,
+        orden: document.getElementById('orden').value.trim(),
+        tipo_mov: document.getElementById('tipo_mov').value,
+        barcode: document.getElementById('barcode').value.trim(),
+        cantidad: document.getElementById('cantidad').value,
+        observacion: document.getElementById('observacion').value.trim(),
+        usuario: "" // opcional: podés poner un nombre fijo o email manual
+      };
+
+      if (!data.orden || !data.barcode || !data.cantidad || Number(data.cantidad) <= 0) {
+        setMsg("Faltan datos (orden / barcode / cantidad).", false);
+        return;
+      }
+
+      btnGuardar.disabled = true;
+      setMsg("Enviando...", true);
+
+      // Enviamos como fire-and-forget para evitar problemas CORS:
+      try {
+        await fetch(APPS_SCRIPT_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+
+        setMsg("✅ Enviado (guardado en Sheet).", true);
+        document.getElementById('barcode').value = "";
+        document.getElementById('cantidad').value = 1;
+        document.getElementById('observacion').value = "";
+      } catch (e) {
+        console.error(e);
+        setMsg("❌ No se pudo enviar: " + (e.message || e), false);
+      } finally {
+        btnGuardar.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
