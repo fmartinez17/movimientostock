@@ -12,7 +12,8 @@
     .row > div { flex: 1; }
     .ok { color: green; margin-top: 10px; }
     .err { color: #b00020; margin-top: 10px; }
-    .small { font-size: 13px; opacity: 0.85; margin-top: 6px; line-height: 1.35; }
+    .small { font-size: 13px; opacity: 0.9; margin-top: 6px; line-height: 1.35; }
+    .box { background:#f5f5f5; padding:10px; border-radius:10px; margin-top:10px; }
   </style>
 </head>
 <body>
@@ -35,6 +36,8 @@
   </div>
 
   <div id="scanner"></div>
+
+  <div id="producto" class="box small"></div>
   <div class="small">Tip: buena luz + código quieto y de frente.</div>
 
   <div class="row">
@@ -58,19 +61,82 @@
 
   <script>
     // === CONFIGURÁ ESTO ===
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzOiAeL-Fg4Eijr6zj0H6ngpFIPoKn6lYGpFt2kDTe_lVwG_oE0CsmraqWzQISkssGi/exec";
-    const SECRET = "PUBLI_2026_Stock!"; // el mismo que pusiste en Code.gs
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz1pb5qqeH8ANUUga36QR72KWq1CEofStjCb4Bc0bEnpq9LnCst4vo24vSX48OCb7zq/exec";
+    const SECRET = "PUBLI_2026_Stock!"; // igual que Code.gs
+    const CATALOG_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ0_lnQKiqRA7UmsoFGAHvxlRoRzXM4tpuZCHD9Hc3HzU98c5l9KQ62-3pqxwQd8wxe0Ll81k0HpvY8/pub?output=csv";
 
     const msgEl = document.getElementById('msg');
+    const productoEl = document.getElementById('producto');
     const barcodeEl = document.getElementById('barcode');
     const btnScan = document.getElementById('btnScan');
     const btnGuardar = document.getElementById('btnGuardar');
 
     let scanning = false;
 
+    // catalogoMap[barcode] = { sku, descripcion }
+    let catalogoMap = {};
+
     function setMsg(t, ok=true) {
       msgEl.className = ok ? 'ok' : 'err';
       msgEl.textContent = t;
+    }
+
+    function setProducto(p) {
+      if (!p) {
+        productoEl.textContent = "";
+        return;
+      }
+      productoEl.textContent = `Producto: ${p.descripcion || "-"} | SKU: ${p.sku || "-"}`;
+    }
+
+    // Parser simple (ok si no hay comas dentro de campos)
+    function parseCSVLine(line) {
+      return line.split(",").map(s => s.replace(/^"|"$/g, "").trim());
+    }
+
+    async function cargarCatalogo() {
+      try {
+        setMsg("Cargando catálogo...", true);
+
+        const res = await fetch(CATALOG_CSV_URL, { cache: "no-store" });
+        if (!res.ok) throw new Error("No se pudo descargar el catálogo");
+        const text = await res.text();
+
+        const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+        if (lines.length < 2) throw new Error("Catálogo vacío");
+
+        const header = parseCSVLine(lines[0]).map(h => h.toLowerCase());
+        const idxBarcode = header.indexOf("barcode");
+        const idxSku = header.indexOf("sku");
+        const idxDesc = header.indexOf("descripcion");
+
+        if (idxBarcode === -1) throw new Error("Falta columna 'barcode' en catálogo");
+
+        const map = {};
+        for (let i = 1; i < lines.length; i++) {
+          const cols = parseCSVLine(lines[i]);
+          const bc = (cols[idxBarcode] || "").trim();
+          if (!bc) continue;
+
+          map[bc] = {
+            sku: (idxSku >= 0 ? cols[idxSku] : "") || "",
+            descripcion: (idxDesc >= 0 ? cols[idxDesc] : "") || ""
+          };
+        }
+
+        catalogoMap = map;
+        setMsg(`✅ Catálogo cargado (${Object.keys(catalogoMap).length} productos)`, true);
+
+      } catch (e) {
+        console.error(e);
+        setMsg("❌ No pude cargar el catálogo: " + (e.message || e), false);
+      }
+    }
+
+    function validarBarcodeLocal(barcode) {
+      const p = catalogoMap[barcode];
+      if (!p) return { ok: false, producto: null };
+      return { ok: true, producto: p };
     }
 
     function startScanner() {
@@ -111,6 +177,8 @@
         setMsg("Apuntá al código…", true);
       });
 
+      // Evita que se acumulen handlers si escaneás varias veces
+      try { Quagga.offDetected(onDetected); } catch(e){}
       Quagga.onDetected(onDetected);
     }
 
@@ -124,8 +192,19 @@
     function onDetected(result) {
       const code = result?.codeResult?.code;
       if (!code) return;
+
       barcodeEl.value = code;
-      setMsg("✅ Escaneado: " + code, true);
+
+      const v = validarBarcodeLocal(code);
+      if (!v.ok) {
+        setProducto(null);
+        setMsg("❌ Código NO existe en catálogo: " + code, false);
+        stopScanner();
+        return;
+      }
+
+      setProducto(v.producto);
+      setMsg("✅ Escaneado y válido: " + code, true);
       stopScanner();
     }
 
@@ -134,26 +213,56 @@
       else stopScanner();
     });
 
-    btnGuardar.addEventListener('click', async () => {
-      const data = {
-        secret: SECRET,
-        orden: document.getElementById('orden').value.trim(),
-        tipo_mov: document.getElementById('tipo_mov').value,
-        barcode: document.getElementById('barcode').value.trim(),
-        cantidad: document.getElementById('cantidad').value,
-        observacion: document.getElementById('observacion').value.trim(),
-        usuario: "" // opcional: podés poner un nombre fijo o email manual
-      };
+    // Validar también si se escribe manual
+    barcodeEl.addEventListener('change', () => {
+      const code = barcodeEl.value.trim();
+      if (!code) { setProducto(null); return; }
+      const v = validarBarcodeLocal(code);
+      if (!v.ok) {
+        setProducto(null);
+        setMsg("❌ Código NO existe en catálogo: " + code, false);
+      } else {
+        setProducto(v.producto);
+        setMsg("✅ Código válido: " + code, true);
+      }
+    });
 
-      if (!data.orden || !data.barcode || !data.cantidad || Number(data.cantidad) <= 0) {
+    btnGuardar.addEventListener('click', async () => {
+      const orden = document.getElementById('orden').value.trim();
+      const tipo_mov = document.getElementById('tipo_mov').value;
+      const barcode = barcodeEl.value.trim();
+      const cantidad = document.getElementById('cantidad').value;
+      const observacion = document.getElementById('observacion').value.trim();
+
+      if (!orden || !barcode || !cantidad || Number(cantidad) <= 0) {
         setMsg("Faltan datos (orden / barcode / cantidad).", false);
+        return;
+      }
+
+      // Validación contra catálogo antes de enviar
+      const v = validarBarcodeLocal(barcode);
+      if (!v.ok) {
+        setProducto(null);
+        setMsg("❌ No se puede guardar: barcode no existe en catálogo.", false);
         return;
       }
 
       btnGuardar.disabled = true;
       setMsg("Enviando...", true);
 
-      // Enviamos como fire-and-forget para evitar problemas CORS:
+      const data = {
+        secret: SECRET,
+        orden,
+        tipo_mov,
+        barcode,
+        cantidad,
+        observacion,
+        // mandamos datos del producto para guardarlos en movimientos
+        sku: v.producto.sku,
+        descripcion: v.producto.descripcion,
+        usuario: "" // opcional
+      };
+
       try {
         await fetch(APPS_SCRIPT_URL, {
           method: "POST",
@@ -162,10 +271,14 @@
           body: JSON.stringify(data)
         });
 
-        setMsg("✅ Enviado (guardado en Sheet).", true);
-        document.getElementById('barcode').value = "";
+        setMsg("✅ Enviado. Revisá la Sheet (movimientos).", true);
+
+        // Limpieza rápida
+        barcodeEl.value = "";
         document.getElementById('cantidad').value = 1;
         document.getElementById('observacion').value = "";
+        setProducto(null);
+
       } catch (e) {
         console.error(e);
         setMsg("❌ No se pudo enviar: " + (e.message || e), false);
@@ -173,6 +286,9 @@
         btnGuardar.disabled = false;
       }
     });
+
+    // Cargar catálogo al iniciar
+    cargarCatalogo();
   </script>
 </body>
 </html>
