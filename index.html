@@ -2,312 +2,348 @@
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Escáner Movimientos</title>
+  <title>PUBLICARTEL · MOVIMIENTOS</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 16px; }
-    label { display:block; margin-top: 12px; font-weight: 600; }
-    input, select, textarea, button { width: 100%; padding: 12px; font-size: 16px; margin-top: 6px; }
-    #scanner { width: 100%; height: 300px; background:#000; border-radius: 12px; margin-top: 12px; overflow:hidden; position: relative; }
-    .row { display:flex; gap:10px; }
-    .row > div { flex: 1; }
-    .ok { color: green; margin-top: 10px; }
-    .err { color: #b00020; margin-top: 10px; }
-    .small { font-size: 13px; opacity: 0.9; margin-top: 6px; line-height: 1.35; }
-    .box { background:#f5f5f5; padding:10px; border-radius:10px; margin-top:10px; }
-    /* Marco visible del área central (para apuntar) */
-    #aim {
-      position:absolute;
-      left: 18%;
-      top: 22%;
-      width: 64%;
-      height: 56%;
-      border: 3px solid rgba(0,255,0,0.8);
-      border-radius: 12px;
-      box-sizing: border-box;
-      pointer-events: none;
+    :root{
+      --brand:#0B2D5C;
+      --brand2:#154B9A;
+      --bg:#F3F6FB;
+      --card:#FFFFFF;
+      --text:#0B2D5C;
+      --muted:rgba(11,45,92,.70);
+      --border:rgba(11,45,92,.28);
+      --danger:#B00020;
+      --shadow:0 10px 30px rgba(11,45,92,.10);
+      --radius:14px;
     }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);font-family:Arial,sans-serif;color:var(--text);text-transform:uppercase}
+    .wrap{max-width:560px;margin:0 auto;padding:16px}
+
+    .header{
+      background:linear-gradient(135deg,var(--brand),var(--brand2));
+      color:#fff;border-radius:var(--radius);
+      padding:16px 14px;box-shadow:var(--shadow);
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+    }
+    .brandTitle{font-weight:900;letter-spacing:.6px;font-size:18px;line-height:1.1}
+    .brandSub{font-size:12px;opacity:.92;margin-top:4px;letter-spacing:.4px}
+
+    .card{
+      margin-top:14px;background:var(--card);border-radius:var(--radius);padding:14px;
+      box-shadow:var(--shadow);border:1px solid rgba(11,45,92,.08)
+    }
+
+    label{display:block;margin-top:12px;font-weight:900;font-size:12px;letter-spacing:.4px;color:var(--muted)}
+    input,select,textarea,button{
+      width:100%;padding:12px;margin-top:6px;border-radius:12px;border:2px solid var(--border);
+      font-size:16px;text-transform:uppercase;background:#fff;color:var(--text);outline:none
+    }
+    input:focus,select:focus,textarea:focus{border-color:rgba(21,75,154,.65);box-shadow:0 0 0 3px rgba(21,75,154,.12)}
+    textarea{min-height:76px;resize:vertical}
+
+    .btn{
+      border:none;font-weight:900;letter-spacing:.7px;cursor:pointer;
+      background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;
+      box-shadow:0 10px 20px rgba(11,45,92,.14)
+    }
+    .btn-secondary{
+      background:#fff;color:var(--brand);border:2px solid var(--border);box-shadow:none;font-weight:900
+    }
+    .btn[disabled]{opacity:.45;cursor:not-allowed;box-shadow:none}
+
+    .camWrap{
+      display:none;margin-top:12px;border-radius:var(--radius);overflow:hidden;
+      border:2px solid var(--border);background:#000
+    }
+    video{width:100%;height:320px;object-fit:cover;display:block;background:#000}
+
+    .hint{
+      display:none;margin-top:10px;padding:10px 12px;border-radius:12px;
+      background:rgba(11,45,92,.06);border:1px solid rgba(11,45,92,.10);
+      font-weight:900
+    }
+
+    .msg{margin-top:10px;font-size:13px;color:var(--muted);min-height:18px;letter-spacing:.3px}
+    .msg.err{color:var(--danger);font-weight:900}
+
+    .topActions{display:flex;gap:10px;margin-top:12px}
+    .topActions button{flex:1}
+
+    .listItem{
+      border:1px solid rgba(11,45,92,.10);
+      background:rgba(11,45,92,.03);
+      border-radius:12px;
+      padding:10px 12px;
+      margin-top:10px;
+    }
+    .liTop{display:flex;justify-content:space-between;gap:10px;font-weight:900}
+    .liSub{margin-top:6px;color:var(--muted);font-weight:800;font-size:12px;line-height:1.35}
+    ::placeholder{color:rgba(11,45,92,.45)}
   </style>
 </head>
+
 <body>
-  <h2>Registrar movimiento</h2>
-
-  <label>Orden</label>
-  <input id="orden" placeholder="Ej: ORD-001" />
-
-  <label>Tipo de movimiento</label>
-  <select id="tipo_mov">
-    <option value="SALIDA">SALIDA</option>
-    <option value="ENTRADA">ENTRADA</option>
-    <option value="AJUSTE">AJUSTE</option>
-  </select>
-
-  <label>Código de barras</label>
-  <div class="row">
-    <div><input id="barcode" placeholder="Escaneá o escribí..." /></div>
-    <div><button id="btnScan" type="button">📷 Escanear</button></div>
-  </div>
-
-  <div id="scanner">
-    <div id="aim"></div>
-  </div>
-
-  <div class="small">
-    Modo estricto: solo escanea si el código está dentro del rectángulo verde.
-  </div>
-
-  <div id="producto" class="box small"></div>
-
-  <div class="row">
-    <div>
-      <label>Cantidad</label>
-      <input id="cantidad" type="number" min="1" step="1" value="1" />
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="brandTitle">PUBLICARTEL</div>
+        <div class="brandSub">MOVIMIENTOS DE STOCK</div>
+      </div>
+      <div style="font-weight:900;opacity:.95;font-size:12px;letter-spacing:.5px;">STOCK</div>
     </div>
-    <div>
-      <label>&nbsp;</label>
-      <button id="btnGuardar" type="button">✅ Guardar</button>
+
+    <!-- PANTALLA 1 -->
+    <div id="screenForm" class="card">
+      <button id="btnScan" type="button" class="btn-secondary">📷 ESCANEAR</button>
+
+      <label>CÓDIGO DE BARRAS</label>
+      <input id="barcode" placeholder="ESCANEÁ O ESCRIBÍ..." />
+
+      <div id="camWrap" class="camWrap">
+        <video id="video" playsinline></video>
+      </div>
+
+      <!-- HINT SOLO CUANDO HAY PRODUCTO -->
+      <div id="producto" class="hint"></div>
+
+      <div class="topActions">
+        <button id="btnVerMovs" type="button" class="btn-secondary">📄 MOVIMIENTOS</button>
+        <button id="btnLimpiar" type="button" class="btn-secondary">🧹 LIMPIAR</button>
+      </div>
+
+      <label>ORDEN (SOLO NÚMEROS)</label>
+      <input id="orden" inputmode="numeric" pattern="[0-9]*" placeholder="EJ: 12345" />
+
+      <label>TIPO DE MOVIMIENTO</label>
+      <select id="tipo_mov">
+        <option value="" selected disabled>INGRESE TIPO DE MOVIMIENTO</option>
+        <option value="SALIDA">SALIDA</option>
+        <option value="ENTRADA">ENTRADA</option>
+        <option value="AJUSTE">AJUSTE</option>
+      </select>
+
+      <label>CANTIDAD</label>
+      <input id="cantidad" type="number" min="1" step="1" placeholder="INGRESE CANTIDAD" />
+
+      <label>OBSERVACIÓN (OPCIONAL)</label>
+      <textarea id="observacion" placeholder="NOTAS..."></textarea>
+
+      <button id="btnGuardar" type="button" class="btn" disabled>✅ GUARDAR</button>
+
+      <div id="msg" class="msg"></div>
+    </div>
+
+    <!-- PANTALLA 2 -->
+    <div id="screenList" class="card" style="display:none;">
+      <div class="topActions">
+        <button id="btnVolver" type="button" class="btn-secondary">⬅️ VOLVER</button>
+        <button id="btnRefrescar" type="button" class="btn-secondary">🔄 REFRESCAR</button>
+      </div>
+
+      <div id="listMsg" class="msg"></div>
+      <div id="listContainer"></div>
     </div>
   </div>
-
-  <label>Observación (opcional)</label>
-  <textarea id="observacion" rows="2" placeholder="Notas..."></textarea>
-
-  <div id="msg"></div>
-
-  <!-- Quagga2 -->
-  <script src="https://unpkg.com/@ericblade/quagga2/dist/quagga.min.js"></script>
 
   <script>
-    // === CONFIGURACIÓN ===
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8UHiav_LdmlUBVBEfklz88n1FkZZIdCU34Ypy_ZZYh6d6YaBnPmrKPYcfMCnX78sr/exec";
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyxM90aS_LNkbUc_pnObM8mRa9FWTjLpj8RBeIyEhyEpu2Z4wzLp6fy4z3R7zck3fME/exec";
     const SECRET = "PUBLI_2026_Stock!";
-
-    // Catálogo
     const SPREADSHEET_ID = "1xdyknuy-wQID0VHMCEuvYc4fz0ljZTGfL7ek7U_M1wE";
     const CATALOG_SHEET_NAME = "catalogo";
+    const REQUIRED_SAME_READS = 2;
 
-    const msgEl = document.getElementById('msg');
-    const productoEl = document.getElementById('producto');
-    const barcodeEl = document.getElementById('barcode');
-    const btnScan = document.getElementById('btnScan');
-    const btnGuardar = document.getElementById('btnGuardar');
+    const screenForm = document.getElementById("screenForm");
+    const screenList = document.getElementById("screenList");
 
-    let scanning = false;
+    const videoEl = document.getElementById("video");
+    const camWrapEl = document.getElementById("camWrap");
+    const btnScan = document.getElementById("btnScan");
+    const btnGuardar = document.getElementById("btnGuardar");
+    const btnVerMovs = document.getElementById("btnVerMovs");
+    const btnLimpiar = document.getElementById("btnLimpiar");
+
+    const ordenEl = document.getElementById("orden");
+    const tipoMovEl = document.getElementById("tipo_mov");
+    const barcodeEl = document.getElementById("barcode");
+    const cantidadEl = document.getElementById("cantidad");
+    const obsEl = document.getElementById("observacion");
+    const productoEl = document.getElementById("producto");
+    const msgEl = document.getElementById("msg");
+
+    const btnVolver = document.getElementById("btnVolver");
+    const btnRefrescar = document.getElementById("btnRefrescar");
+    const listMsgEl = document.getElementById("listMsg");
+    const listContainer = document.getElementById("listContainer");
+
     let catalogoMap = {};
+    let currentProducto = null;
+    let currentBarcodeValid = "";
+    let stream = null;
+    let detector = null;
+    let scanning = false;
+    let rafId = null;
+    let lastCode = "";
+    let sameCount = 0;
 
-    // Para filtro estricto por box “real”
-    let lastBox = null;
-    let lastBoxAt = 0;
-
-    function setMsg(t, ok=true) {
-      msgEl.className = ok ? 'ok' : 'err';
-      msgEl.textContent = t;
+    function setMsg(t="", err=false){
+      msgEl.className = "msg" + (err ? " err" : "");
+      msgEl.textContent = (t||"").toString().toUpperCase();
+    }
+    function setListMsg(t="", err=false){
+      listMsgEl.className = "msg" + (err ? " err" : "");
+      listMsgEl.textContent = (t||"").toString().toUpperCase();
     }
 
-    function setProducto(p) {
-      if (!p) { productoEl.textContent = ""; return; }
-      productoEl.textContent = `Producto: ${p.descripcion || "-"} | SKU: ${p.sku || "-"}`;
+    function setProductoValido(producto, barcode){
+      currentProducto = producto || null;
+      currentBarcodeValid = producto ? (barcode || "") : "";
+
+      if (!producto){
+        productoEl.style.display = "none";
+        productoEl.textContent = "";
+        btnGuardar.disabled = true;
+        return;
+      }
+
+      productoEl.textContent = (`PRODUCTO: ${producto.descripcion||"-"} | SKU: ${producto.sku||"-"}`).toUpperCase();
+      productoEl.style.display = "block";
+      btnGuardar.disabled = false;
     }
 
-    async function cargarCatalogo() {
-      try {
-        setMsg("Cargando catálogo...", true);
-
+    async function cargarCatalogoSilencioso(){
+      try{
         const tq = encodeURIComponent("select A,B,C");
         const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=${encodeURIComponent(CATALOG_SHEET_NAME)}&tq=${tq}&tqx=out:json`;
-
-        const res = await fetch(url, { cache: "no-store" });
-        if (!res.ok) throw new Error("No se pudo descargar catálogo (gviz)");
-
+        const res = await fetch(url, { cache:"no-store" });
         const raw = await res.text();
         const jsonText = raw.substring(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
         const data = JSON.parse(jsonText);
 
         const rows = data?.table?.rows || [];
         const map = {};
-
         for (const r of rows) {
           const c = r.c || [];
-          const bc = (c[0]?.v ?? "").toString().trim();   // A barcode
-          const sku = (c[1]?.v ?? "").toString().trim();  // B sku
-          const desc = (c[2]?.v ?? "").toString().trim(); // C descripcion
+          const bc = (c[0]?.v ?? "").toString().trim();
+          const sku = (c[1]?.v ?? "").toString().trim();
+          const desc = (c[2]?.v ?? "").toString().trim();
           if (!bc) continue;
           map[bc] = { sku, descripcion: desc };
         }
-
         catalogoMap = map;
-        setMsg(`✅ Catálogo cargado (${Object.keys(catalogoMap).length} productos)`, true);
-
-      } catch (e) {
+      }catch(e){
         console.error(e);
-        setMsg("❌ No pude cargar el catálogo: " + (e.message || e), false);
+        // no mostramos “catalogo cargado”
+        setMsg("ERROR CARGANDO CATÁLOGO", true);
       }
     }
 
-    function validarBarcodeLocal(barcode) {
+    function validarBarcodeLocal(barcode){
       const p = catalogoMap[barcode];
-      if (!p) return { ok: false, producto: null };
-      return { ok: true, producto: p };
+      return p ? {ok:true, producto:p} : {ok:false, producto:null};
     }
 
-    function onProcessed(result) {
-      if (result && result.box) {
-        lastBox = result.box;
-        lastBoxAt = Date.now();
-      }
+    async function initDetector(){
+      if (!("BarcodeDetector" in window)) throw new Error("BARCODEDETECTOR NO DISPONIBLE");
+      const formats = await BarcodeDetector.getSupportedFormats();
+      detector = new BarcodeDetector({ formats });
     }
 
-    function isCenterHitStrict() {
-      // Estricto: si no hay box reciente, no aceptamos
-      if (!lastBox) return false;
-      if (Date.now() - lastBoxAt > 350) return false; // más estricto (ms)
-
-      const overlay = Quagga.canvas?.dom?.overlay;
-      if (!overlay) return false;
-
-      const w = overlay.width;
-      const h = overlay.height;
-
-      // Centro estricto (más chico que antes)
-      const left = w * 0.18;
-      const right = w * 0.82;
-      const top = h * 0.22;
-      const bottom = h * 0.78;
-
-      const xs = lastBox.map(p => p.x);
-      const ys = lastBox.map(p => p.y);
-
-      const minX = Math.min(...xs);
-      const maxX = Math.max(...xs);
-      const minY = Math.min(...ys);
-      const maxY = Math.max(...ys);
-
-      return (minX >= left && maxX <= right && minY >= top && maxY <= bottom);
+    async function startCamera(){
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode:{ideal:"environment"}, width:{ideal:1280}, height:{ideal:720} },
+        audio:false
+      });
+      videoEl.srcObject = stream;
+      await videoEl.play();
     }
 
-    function startScanner() {
+    function stopCamera(){
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = null;
+      if (stream) stream.getTracks().forEach(t=>t.stop());
+      stream = null;
+      videoEl.srcObject = null;
+    }
+
+    async function scanLoop(){
+      if (!scanning) return;
+      try{
+        const barcodes = await detector.detect(videoEl);
+        if (barcodes?.length){
+          const code = (barcodes[0].rawValue || "").trim();
+          if (code){
+            if (code === lastCode) sameCount++; else { lastCode=code; sameCount=1; }
+
+            if (sameCount >= REQUIRED_SAME_READS){
+              barcodeEl.value = code;
+              const v = validarBarcodeLocal(code);
+              if (v.ok) { setProductoValido(v.producto, code); setMsg(""); }
+              else { setProductoValido(null,""); setMsg(""); }
+              stopScan();
+              return;
+            }
+          }
+        }
+      }catch(e){}
+      rafId = requestAnimationFrame(scanLoop);
+    }
+
+    async function startScan(){
       if (scanning) return;
       scanning = true;
-      btnScan.textContent = "🛑 Detener";
-      setMsg("Abriendo cámara...", true);
-
-      lastBox = null;
-      lastBoxAt = 0;
-
-      Quagga.init({
-        inputStream: {
-          type: "LiveStream",
-          target: document.querySelector('#scanner'),
-          constraints: {
-            facingMode: "environment",
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          },
-          // ✅ Recorte: solo analiza el centro (estricto)
-          area: {
-            top: "22%",
-            right: "18%",
-            left: "18%",
-            bottom: "22%"
-          }
-        },
-        decoder: {
-          readers: [
-            "ean_reader",
-            "ean_8_reader",
-            "upc_reader",
-            "upc_e_reader",
-            "code_128_reader",
-            "code_39_reader"
-          ]
-        },
-        locate: true
-      }, function(err) {
-        if (err) {
-          console.error(err);
-          setMsg("❌ Error cámara: " + err.message, false);
-          stopScanner();
-          return;
-        }
-        Quagga.start();
-        setMsg("Apuntá al código dentro del rectángulo verde…", true);
-      });
-
-      try { Quagga.offDetected(onDetected); } catch(e){}
-      Quagga.onDetected(onDetected);
-
-      try { Quagga.offProcessed(onProcessed); } catch(e){}
-      Quagga.onProcessed(onProcessed);
-    }
-
-    function stopScanner() {
-      scanning = false;
-      btnScan.textContent = "📷 Escanear";
-      try { Quagga.offDetected(onDetected); } catch(e){}
-      try { Quagga.offProcessed(onProcessed); } catch(e){}
-      try { Quagga.stop(); } catch(e){}
-    }
-
-    function onDetected(result) {
-      // ✅ filtro estricto (centro + box reciente)
-      if (!isCenterHitStrict()) return;
-
-      const code = result?.codeResult?.code;
-      if (!code) return;
-
-      barcodeEl.value = code;
-
-      const v = validarBarcodeLocal(code);
-      if (!v.ok) {
-        setProducto(null);
-        setMsg("❌ Código NO existe en catálogo: " + code, false);
-        stopScanner();
-        return;
+      btnScan.textContent = "🛑 DETENER";
+      lastCode=""; sameCount=0;
+      try{
+        await initDetector();
+        camWrapEl.style.display = "block";
+        await startCamera();
+        rafId = requestAnimationFrame(scanLoop);
+      }catch(e){
+        console.error(e);
+        scanning=false;
+        btnScan.textContent="📷 ESCANEAR";
+        camWrapEl.style.display="none";
+        stopCamera();
+        setMsg("ERROR DE CÁMARA / PERMISOS", true);
       }
-
-      setProducto(v.producto);
-      setMsg("✅ Escaneado y válido: " + code, true);
-      stopScanner();
     }
 
-    btnScan.addEventListener('click', () => {
-      if (!scanning) startScanner();
-      else stopScanner();
-    });
+    function stopScan(){
+      scanning=false;
+      btnScan.textContent="📷 ESCANEAR";
+      stopCamera();
+      camWrapEl.style.display="none";
+    }
 
-    barcodeEl.addEventListener('change', () => {
+    btnScan.addEventListener("click", ()=> scanning ? stopScan() : startScan());
+
+    ordenEl.addEventListener("input", ()=> { ordenEl.value = ordenEl.value.replace(/\D/g,""); });
+
+    barcodeEl.addEventListener("change", ()=>{
       const code = barcodeEl.value.trim();
-      if (!code) { setProducto(null); return; }
+      if (!code) { setProductoValido(null,""); setMsg(""); return; }
       const v = validarBarcodeLocal(code);
-      if (!v.ok) {
-        setProducto(null);
-        setMsg("❌ Código NO existe en catálogo: " + code, false);
-      } else {
-        setProducto(v.producto);
-        setMsg("✅ Código válido: " + code, true);
-      }
+      if (v.ok) { setProductoValido(v.producto, code); setMsg(""); }
+      else { setProductoValido(null,""); setMsg(""); }
     });
 
-    btnGuardar.addEventListener('click', async () => {
-      const orden = document.getElementById('orden').value.trim();
-      const tipo_mov = document.getElementById('tipo_mov').value;
+    btnLimpiar.addEventListener("click", ()=>{
+      barcodeEl.value=""; cantidadEl.value=""; obsEl.value="";
+      setProductoValido(null,""); setMsg("");
+    });
+
+    btnGuardar.addEventListener("click", async ()=>{
+      const orden = ordenEl.value.trim();
+      const tipo_mov = (tipoMovEl.value || "").trim().toUpperCase();
       const barcode = barcodeEl.value.trim();
-      const cantidad = document.getElementById('cantidad').value;
-      const observacion = document.getElementById('observacion').value.trim();
+      const cantidad = (cantidadEl.value || "").trim();
+      const observacion = (obsEl.value || "").trim().toUpperCase();
 
-      if (!orden || !barcode || !cantidad || Number(cantidad) <= 0) {
-        setMsg("Faltan datos (orden / barcode / cantidad).", false);
-        return;
-      }
-
-      const v = validarBarcodeLocal(barcode);
-      if (!v.ok) {
-        setProducto(null);
-        setMsg("❌ No se puede guardar: barcode no existe en catálogo.", false);
-        return;
-      }
+      if (!currentProducto || currentBarcodeValid !== barcode) { btnGuardar.disabled = true; return; }
+      if (!orden || !tipo_mov || !barcode || !cantidad || Number(cantidad) <= 0) { setMsg("FALTAN DATOS", true); return; }
 
       btnGuardar.disabled = true;
-      setMsg("Enviando...", true);
 
       const data = {
         secret: SECRET,
@@ -316,34 +352,94 @@
         barcode,
         cantidad,
         observacion,
-        sku: v.producto.sku,
-        descripcion: v.producto.descripcion,
-        usuario: ""
+        sku: currentProducto.sku,
+        descripcion: currentProducto.descripcion,
+        usuario:""
       };
 
-      try {
+      try{
         await fetch(APPS_SCRIPT_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
+          method:"POST",
+          mode:"no-cors",
+          headers:{ "Content-Type":"application/json" },
           body: JSON.stringify(data)
         });
-
-        setMsg("✅ Enviado. Revisá la Sheet (movimientos).", true);
-        barcodeEl.value = "";
-        document.getElementById('cantidad').value = 1;
-        document.getElementById('observacion').value = "";
-        setProducto(null);
-
-      } catch (e) {
+        setMsg("GUARDADO");
+        barcodeEl.value=""; cantidadEl.value=""; obsEl.value="";
+        setProductoValido(null,"");
+      }catch(e){
         console.error(e);
-        setMsg("❌ No se pudo enviar: " + (e.message || e), false);
-      } finally {
-        btnGuardar.disabled = false;
+        setMsg("ERROR AL ENVIAR", true);
+      }finally{
+        btnGuardar.disabled = !currentProducto;
       }
     });
 
-    cargarCatalogo();
+    function fmtFecha(iso){
+      try{
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return iso;
+        const dd = String(d.getDate()).padStart(2,"0");
+        const mm = String(d.getMonth()+1).padStart(2,"0");
+        const yy = d.getFullYear();
+        const hh = String(d.getHours()).padStart(2,"0");
+        const mi = String(d.getMinutes()).padStart(2,"0");
+        return `${dd}/${mm}/${yy} ${hh}:${mi}`;
+      }catch{ return iso; }
+    }
+
+    async function cargarMovimientos(){
+      setListMsg("CARGANDO...");
+      listContainer.innerHTML = "";
+      try{
+        const url = `${APPS_SCRIPT_URL}?secret=${encodeURIComponent(SECRET)}&limit=50`;
+        const res = await fetch(url, { cache:"no-store" });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || "ERROR");
+
+        const items = json.items || [];
+        if (!items.length) { setListMsg("SIN MOVIMIENTOS"); return; }
+
+        setListMsg("");
+        for (const it of items){
+          const fecha = fmtFecha(it.timestamp);
+          const tipo = String(it.tipo_mov||"");
+          const prod = String(it.descripcion||"");
+          const cant = Number(it.cantidad||0);
+          const obs = String(it.observacion||"");
+
+          const div = document.createElement("div");
+          div.className = "listItem";
+          div.innerHTML = `
+            <div class="liTop"><div>${fecha}</div><div>${tipo}</div></div>
+            <div class="liSub">${prod}</div>
+            <div class="liSub">CANTIDAD: ${cant}${obs ? " | OBS: " + obs : ""}</div>
+          `;
+          listContainer.appendChild(div);
+        }
+      }catch(e){
+        console.error(e);
+        setListMsg("NO SE PUDO CARGAR", true);
+      }
+    }
+
+    btnVerMovs.addEventListener("click", async ()=>{
+      screenForm.style.display="none";
+      screenList.style.display="block";
+      await cargarMovimientos();
+    });
+
+    btnVolver.addEventListener("click", ()=>{
+      screenList.style.display="none";
+      screenForm.style.display="block";
+    });
+
+    btnRefrescar.addEventListener("click", cargarMovimientos);
+
+    // init
+    setProductoValido(null,"");
+    setMsg("");
+    cargarCatalogoSilencioso();
   </script>
 </body>
 </html>
