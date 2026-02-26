@@ -86,19 +86,66 @@
     .liTop{display:flex;justify-content:space-between;gap:10px;font-weight:900}
     .liSub{margin-top:6px;color:var(--muted);font-weight:800;font-size:12px;line-height:1.35}
 
-    /* TOAST */
+    ::placeholder{color:rgba(11,45,92,.45)}
+
+    /* ===== TOAST VERDE ===== */
     .toast{
-      position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
+      position:fixed;
+      left:50%;
+      bottom:18px;
+      transform:translateX(-50%);
       background:linear-gradient(135deg, rgba(15,122,58,0.98), rgba(18,150,76,0.98));
-      color:#fff;padding:12px 14px;border-radius:14px;
+      color:#fff;
+      padding:12px 14px;
+      border-radius:14px;
       box-shadow:0 14px 34px rgba(0,0,0,.18);
-      font-weight:900;letter-spacing:.5px;display:none;z-index:9999;max-width:92vw;text-align:center;
+      font-weight:900;
+      letter-spacing:.5px;
+      display:none;
+      z-index:9999;
+      max-width:92vw;
+      text-align:center;
     }
     .toast.show{display:block; animation:toastIn .22s ease;}
     @keyframes toastIn{
       from{opacity:0; transform:translateX(-50%) translateY(8px)}
       to{opacity:1; transform:translateX(-50%) translateY(0)}
     }
+
+    /* ===== POPUP BUSCANDO ===== */
+    .busyModal{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.30);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:10000;
+    }
+    .busyBox{
+      width:min(92vw, 360px);
+      background:#fff;
+      border:2px solid rgba(11,45,92,.18);
+      border-radius:16px;
+      box-shadow:0 18px 40px rgba(0,0,0,.20);
+      padding:16px 16px;
+      text-align:center;
+    }
+    .busyText{
+      margin-top:12px;
+      font-weight:900;
+      letter-spacing:.6px;
+      color:var(--brand);
+    }
+    .busySpinner{
+      width:34px;height:34px;
+      border-radius:50%;
+      border:4px solid rgba(11,45,92,.18);
+      border-top-color: rgba(11,45,92,.80);
+      margin:0 auto;
+      animation:spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 
@@ -112,7 +159,7 @@
       <div style="font-weight:900;opacity:.95;font-size:12px;letter-spacing:.5px;">STOCK</div>
     </div>
 
-    <!-- FORM -->
+    <!-- SCREEN: FORM -->
     <div id="screenForm" class="card">
       <button id="btnScan" type="button" class="btn-secondary">📷 ESCANEAR</button>
 
@@ -151,7 +198,7 @@
       <div id="msg" class="msg"></div>
     </div>
 
-    <!-- MOVIMIENTOS -->
+    <!-- SCREEN: MOVIMIENTOS -->
     <div id="screenList" class="card" style="display:none;">
       <div class="topActions">
         <button id="btnVolver" type="button" class="btn-secondary">⬅️ VOLVER</button>
@@ -180,16 +227,27 @@
     </div>
   </div>
 
+  <!-- POPUP BUSCANDO -->
+  <div id="busyModal" class="busyModal">
+    <div class="busyBox">
+      <div class="busySpinner"></div>
+      <div id="busyText" class="busyText">BUSCANDO PRODUCTO...</div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
   <div id="toast" class="toast">GUARDADO</div>
 
   <script>
-    // ========= CONFIG =========
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwkmdQG_8eXge_tLzPiTMG39V0OzxKqhNttZswlUZ52gThx1v_srXgCpbJICgnN6Tti/exec"; // <-- tu /exec
+    // ===== CONFIG =====
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEbDR4Ns1BhfUXEsztkNWTYnQuC_saqwYxA2nCgTJsN7cXG8d9OZY7IpI87msULkIc/exec"; // <-- PEGÁ TU /exec
     const SECRET = "PUBLI_2026_Stock!";
     const REQUIRED_SAME_READS = 2;
 
-    // ========= DOM =========
+    // ===== DOM =====
     const toastEl = document.getElementById("toast");
+    const busyModalEl = document.getElementById("busyModal");
+    const busyTextEl = document.getElementById("busyText");
 
     const screenForm = document.getElementById("screenForm");
     const screenList = document.getElementById("screenList");
@@ -208,6 +266,7 @@
     const productoEl = document.getElementById("producto");
     const msgEl = document.getElementById("msg");
 
+    // list
     const btnVolver = document.getElementById("btnVolver");
     const btnRefrescar = document.getElementById("btnRefrescar");
     const btnAplicarFiltros = document.getElementById("btnAplicarFiltros");
@@ -218,17 +277,29 @@
     const listMsgEl = document.getElementById("listMsg");
     const listContainer = document.getElementById("listContainer");
 
-    // ========= STATE =========
+    // ===== STATE =====
     let currentProducto = null;   // { sku, descripcion }
     let currentBarcode = "";
     let currentStock = null;
 
+    // cache navegador (instantáneo al repetir)
+    const memLookup = new Map(); // barcode -> {sku, descripcion, stock, t}
+
+    // scanner
     let stream = null;
     let detector = null;
     let scanning = false;
     let rafId = null;
     let lastCode = "";
     let sameCount = 0;
+
+    function showBusy(text="BUSCANDO PRODUCTO..."){
+      busyTextEl.textContent = (text||"").toString().toUpperCase();
+      busyModalEl.style.display = "flex";
+    }
+    function hideBusy(){
+      busyModalEl.style.display = "none";
+    }
 
     function setMsg(t="", err=false){
       msgEl.className = "msg" + (err ? " err" : "");
@@ -238,6 +309,7 @@
       listMsgEl.className = "msg" + (err ? " err" : "");
       listMsgEl.textContent = (t||"").toString().toUpperCase();
     }
+
     function showToast(text){
       toastEl.textContent = (text||"").toString().toUpperCase();
       toastEl.classList.add("show");
@@ -274,14 +346,47 @@
       return j;
     }
 
-    async function fetchProducto(barcode){
-      // Busca en la hoja catalogo en Apps Script (no en el navegador)
-      return await apiGet_({ action:"producto", secret:SECRET, barcode });
+    async function fetchLookup(barcode){
+      return await apiGet_({ action:"lookup", secret:SECRET, barcode });
     }
 
-    async function fetchStock(sku){
-      const j = await apiGet_({ action:"stock", secret:SECRET, sku });
-      return Number(j.stock || 0);
+    async function handleBarcode(code){
+      const clean = String(code||"").trim();
+      if (!clean) return;
+
+      barcodeEl.value = clean;
+
+      // cache navegador 15s
+      const hit = memLookup.get(clean);
+      if (hit && (Date.now() - hit.t) < 15000){
+        setProducto({ sku: hit.sku, descripcion: hit.descripcion }, clean, hit.stock);
+        setMsg("", false);
+        cantidadEl.focus();
+        cantidadEl.select?.();
+        return;
+      }
+
+      showBusy("BUSCANDO PRODUCTO...");
+      setMsg("", false);
+      setProducto(null,"",null);
+
+      try{
+        const j = await fetchLookup(clean);
+        const producto = { sku: j.sku, descripcion: j.descripcion };
+        const stock = Number(j.stock || 0);
+
+        memLookup.set(clean, { sku: producto.sku, descripcion: producto.descripcion, stock, t: Date.now() });
+
+        setProducto(producto, clean, stock);
+        setMsg("", false);
+        cantidadEl.focus();
+        cantidadEl.select?.();
+      }catch(e){
+        setProducto(null,"",null);
+        setMsg(String(e.message || e).toUpperCase(), true);
+      }finally{
+        hideBusy();
+      }
     }
 
     async function initDetector(){
@@ -305,28 +410,6 @@
       if (stream) stream.getTracks().forEach(t=>t.stop());
       stream = null;
       videoEl.srcObject = null;
-    }
-
-    async function handleBarcode(code){
-      barcodeEl.value = code;
-      setMsg("BUSCANDO PRODUCTO...", false);
-      setProducto(null,"",null);
-
-      try{
-        const pj = await fetchProducto(code);
-        const producto = { sku: pj.sku, descripcion: pj.descripcion };
-        setProducto(producto, code, null);
-
-        const stock = await fetchStock(producto.sku);
-        setProducto(producto, code, stock);
-
-        setMsg("", false);
-        cantidadEl.focus();
-        cantidadEl.select?.();
-      }catch(e){
-        setProducto(null,"",null);
-        setMsg(String(e.message || e).toUpperCase(), true);
-      }
     }
 
     async function scanLoop(){
@@ -417,9 +500,19 @@
           body: JSON.stringify(data)
         });
 
+        // actualizo cache local: si fue entrada/salida, ajusto stock mostrado
+        const delta = Number(cantidad) * (tipo_mov === "ENTRADA" ? 1 : (tipo_mov === "SALIDA" ? -1 : 0));
+        if (delta !== 0 && typeof currentStock === "number"){
+          currentStock = currentStock + delta;
+        }
+
+        // invalido cache de barcode por 15s (para que el próximo lookup no muestre stock viejo)
+        memLookup.delete(barcode);
+
         showToast("✅ MOVIMIENTO INGRESADO");
         setMsg("", false);
         limpiarCampos();
+
       }catch(e){
         setMsg("ERROR AL ENVIAR", true);
       }finally{
@@ -453,7 +546,7 @@
         const j = await apiGet_({
           action:"list",
           secret:SECRET,
-          limit:"80",
+          limit:"120",
           tipo,
           q,
           from,
@@ -481,20 +574,18 @@
           listContainer.appendChild(div);
         }
       }catch(e){
-        // esto te va a decir HTTP 401/403/404 si es URL/permisos
         setListMsg(("NO SE PUDO CARGAR: " + (e.message||e)), true);
       }
     }
 
-    // ========= EVENTS =========
+    // ===== EVENTS =====
     btnScan.addEventListener("click", ()=> scanning ? stopScan() : startScan());
+
     ordenEl.addEventListener("input", ()=> { ordenEl.value = ordenEl.value.replace(/\D/g,""); });
     ordenEl.addEventListener("blur", ()=> { if (!ordenEl.value.trim()) ordenEl.value = "0"; });
 
     barcodeEl.addEventListener("change", async ()=>{
-      const code = barcodeEl.value.trim();
-      if (!code){ setProducto(null,"",null); setMsg("", false); return; }
-      await handleBarcode(code);
+      await handleBarcode(barcodeEl.value);
     });
 
     btnGuardar.addEventListener("click", guardarMovimiento);
@@ -520,4 +611,3 @@
   </script>
 </body>
 </html>
-
