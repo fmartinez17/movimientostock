@@ -73,6 +73,10 @@
     .topActions{display:flex;gap:10px;margin-top:12px}
     .topActions button{flex:1}
 
+    /* ✅ NAV EN BLOQUES INDEPENDIENTES (vertical) */
+    .navBlocks{display:flex;flex-direction:column;gap:10px;margin-top:0;}
+    .navBlocks button{margin-top:0;width:100%;}
+
     .filterRow{display:flex;gap:10px;margin-top:12px}
     .filterRow > *{flex:1}
 
@@ -202,10 +206,11 @@
     <!-- SCREEN: FORM -->
     <div id="screenForm" class="card">
 
-      <!-- botones arriba en bloque -->
-      <div class="topActions" style="margin-top:0;">
-        <button id="btnVerMovs" type="button" class="btn-secondary">📋MOVS</button>
-        <button id="btnAddProd" type="button" class="btn-secondary">➕ NUEVO</button>
+      <!-- ✅ NAV EN BLOQUES INDEPENDIENTES -->
+      <div class="navBlocks">
+        <button id="btnVerMovs" type="button" class="btn-secondary">📋 MOVIMIENTOS</button>
+        <button id="btnAddProd" type="button" class="btn-secondary">➕ NUEVO PRODUCTO</button>
+        <button id="btnProductos" type="button" class="btn-secondary">📦 PRODUCTOS</button>
       </div>
 
       <button id="btnScan" type="button" class="btn-secondary">📷 ESCANEAR</button>
@@ -294,6 +299,21 @@
 
       <div id="addMsg" class="msg"></div>
     </div>
+
+    <!-- ✅ SCREEN: PRODUCTOS (CATALOGO) -->
+    <div id="screenProductos" class="card" style="display:none;">
+      <div class="topActions" style="margin-top:0;">
+        <button id="btnVolverProd" type="button" class="btn-secondary">⬅️ VOLVER</button>
+        <button id="btnRefrescarProd" type="button" class="btn-secondary">🔄 REFRESCAR</button>
+      </div>
+
+      <label>BUSCAR</label>
+      <input id="pQ" placeholder="BUSCAR (BARCODE / SKU / DESCRIPCIÓN)" />
+      <button id="btnBuscarProd" type="button" class="btn-secondary">🔎 BUSCAR</button>
+
+      <div id="prodMsg" class="msg"></div>
+      <div id="prodContainer"></div>
+    </div>
   </div>
 
   <!-- POPUP -->
@@ -312,7 +332,7 @@
 
   <script>
     // ===== CONFIG =====
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwmU56GUpXY9Wg0uDZOANObXEAz-FprpAwtWSAF8j-DwDgjAS25qhSA4CRhU1u5hRN7/exec"; // <-- TU /exec
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxEWgQ5A7R2dVY02tL18scTuoPp-XTe5Q1Uwyo99hNjyNo_sM46Lk3CY4lpO_ciqI6q/exec"; // <-- TU /exec
     const SECRET = "PUBLI_2026_Stock!";
     const REQUIRED_SAME_READS = 2;
 
@@ -324,6 +344,7 @@
     const screenForm = document.getElementById("screenForm");
     const screenList = document.getElementById("screenList");
     const screenAdd  = document.getElementById("screenAdd");
+    const screenProductos = document.getElementById("screenProductos");
 
     const videoEl = document.getElementById("video");
     const camWrapEl = document.getElementById("camWrap");
@@ -335,6 +356,7 @@
     const btnGuardar = document.getElementById("btnGuardar");
     const btnVerMovs = document.getElementById("btnVerMovs");
     const btnAddProd = document.getElementById("btnAddProd");
+    const btnProductos = document.getElementById("btnProductos");
 
     const ordenEl = document.getElementById("orden");
     const tipoMovEl = document.getElementById("tipo_mov");
@@ -366,6 +388,14 @@
     const addMsgEl = document.getElementById("addMsg");
     const productoAddHintEl = document.getElementById("productoAddHint");
 
+    // productos
+    const btnVolverProd = document.getElementById("btnVolverProd");
+    const btnRefrescarProd = document.getElementById("btnRefrescarProd");
+    const btnBuscarProd = document.getElementById("btnBuscarProd");
+    const pQEl = document.getElementById("pQ");
+    const prodMsgEl = document.getElementById("prodMsg");
+    const prodContainer = document.getElementById("prodContainer");
+
     // ===== STATE =====
     let currentProducto = null;   // { sku, descripcion }
     let currentBarcode = "";
@@ -385,6 +415,9 @@
     // popup mínimo visible
     let busyShownAt = 0;
     const BUSY_MIN_MS = 250;
+
+    // catálogo cache
+    let catalogCache = []; // [{barcode, sku, descripcion}]
 
     function resetBusyStyle(){ busyBoxEl.classList.remove("success","error"); }
     function popBusy(){
@@ -432,6 +465,10 @@
     function setAddMsg(t="", err=false){
       addMsgEl.className = "msg" + (err ? " err" : "");
       addMsgEl.textContent = (t||"").toString().toUpperCase();
+    }
+    function setProdMsg(t="", err=false){
+      prodMsgEl.className = "msg" + (err ? " err" : "");
+      prodMsgEl.textContent = (t||"").toString().toUpperCase();
     }
 
     function resetTipoYcantidadUI_(){
@@ -487,6 +524,10 @@
 
     async function catFind(barcode){
       return await apiGet_({ action:"catfind", secret:SECRET, barcode });
+    }
+
+    async function fetchCatalog_(){
+      return await apiGet_({ action:"catalog", secret:SECRET });
     }
 
     async function handleBarcode_MOV(code){
@@ -549,7 +590,6 @@
       try{
         const j = await catFind(clean);
         if (j.exists){
-          // ya existe
           productoAddHintEl.innerHTML =
             `<div>YA EXISTE EN CATÁLOGO</div><div class="line2">SKU: ${j.sku||"-"} | ${j.descripcion||"-"}</div>`;
           productoAddHintEl.style.display = "block";
@@ -648,6 +688,7 @@
 
       const data = {
         secret: SECRET,
+        action: "move",
         orden,
         tipo_mov,
         barcode,
@@ -736,6 +777,7 @@
           let tipoMov = String(it.tipo_mov||"");
           const isAjuste = String(it.observacion||"").toUpperCase().includes("AJUSTE AUTOMÁTICO");
           if (isAjuste) tipoMov = `${tipoMov} | AJUSTE`;
+
           const prod = String(it.descripcion||"");
           const cant = Number(it.cantidad||0);
           const obs = String(it.observacion||"");
@@ -799,6 +841,9 @@
 
         setAddMsg("", false);
         clearAddForm_();
+
+        // refresca cache de catálogo (opcional)
+        catalogCache = [];
       }catch(e){
         setBusyError("❌ ERROR");
         setTimeout(()=> hideBusy(), 900);
@@ -806,6 +851,53 @@
       }finally{
         btnGuardarProd.disabled = false;
       }
+    }
+
+    // ===== PRODUCTOS (CATALOGO) =====
+    function renderCatalog_(items){
+      prodContainer.innerHTML = "";
+      if (!items.length){
+        setProdMsg("SIN RESULTADOS", false);
+        return;
+      }
+      setProdMsg("", false);
+      for (const it of items){
+        const bc = String(it.barcode||"");
+        const sku = String(it.sku||"");
+        const desc = String(it.descripcion||"");
+        const div = document.createElement("div");
+        div.className = "listItem";
+        div.innerHTML = `
+          <div class="liTop"><div>${sku || "-"}</div><div>${bc || "-"}</div></div>
+          <div class="liSub">${desc || "-"}</div>
+        `;
+        prodContainer.appendChild(div);
+      }
+    }
+
+    async function cargarCatalogoPantalla_(){
+      setProdMsg("CARGANDO...", false);
+      prodContainer.innerHTML = "";
+      try{
+        const j = await fetchCatalog_();
+        catalogCache = (j.items || []).slice();
+        renderCatalog_(catalogCache);
+      }catch(e){
+        setProdMsg("NO SE PUDO CARGAR: " + (e.message||e), true);
+      }
+    }
+
+    function filtrarCatalogo_(){
+      const q = String(pQEl.value||"").trim().toUpperCase();
+      if (!q){
+        renderCatalog_(catalogCache);
+        return;
+      }
+      const out = catalogCache.filter(it => {
+        const blob = `${it.barcode||""} ${it.sku||""} ${it.descripcion||""}`.toUpperCase();
+        return blob.includes(q);
+      });
+      renderCatalog_(out);
     }
 
     // ===== SCANNER =====
@@ -817,12 +909,12 @@
 
     async function startCamera(){
       const targetVideo = (scanTarget === "ADD") ? videoAddEl : videoEl;
-    
+
       stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode:{ideal:"environment"}, width:{ideal:1280}, height:{ideal:720} },
         audio:false
       });
-    
+
       targetVideo.srcObject = stream;
       await targetVideo.play();
     }
@@ -832,7 +924,9 @@
       rafId = null;
       if (stream) stream.getTracks().forEach(t=>t.stop());
       stream = null;
+      // ✅ limpiar ambos videos
       videoEl.srcObject = null;
+      videoAddEl.srcObject = null;
     }
 
     async function scanLoop(){
@@ -860,15 +954,15 @@
 
     async function startScan(){
       if (scanning) return;
-    
+
       scanning = true;
       lastCode="";
       sameCount=0;
-    
+
       try{
         await initDetector();
-        (camWrapEl).style.display = (scanTarget === "MOV") ? "block" : "none";
-        (camWrapAddEl).style.display = (scanTarget === "ADD") ? "block" : "none";
+        camWrapEl.style.display = (scanTarget === "MOV") ? "block" : "none";
+        camWrapAddEl.style.display = (scanTarget === "ADD") ? "block" : "none";
         await startCamera();
         rafId = requestAnimationFrame(scanLoop);
       }catch(e){
@@ -876,10 +970,10 @@
         camWrapEl.style.display="none";
         camWrapAddEl.style.display="none";
         stopCamera();
-    
+
         btnScan.textContent = "📷 ESCANEAR";
         btnScanAdd.textContent = "📷 ESCANEAR";
-    
+
         if (scanTarget === "ADD") setAddMsg("ERROR DE CÁMARA / PERMISOS", true);
         else setMsg("ERROR DE CÁMARA / PERMISOS", true);
       }
@@ -890,7 +984,7 @@
       stopCamera();
       camWrapEl.style.display="none";
       camWrapAddEl.style.display="none";
-    
+
       btnScan.textContent = "📷 ESCANEAR";
       btnScanAdd.textContent = "📷 ESCANEAR";
     }
@@ -899,17 +993,14 @@
     function toggleScan(target){
       if (scanning){
         stopScan();
-        btnScan.textContent = "📷 ESCANEAR";
-        btnScanAdd.textContent = "📷 ESCANEAR";
         return;
       }
-    
       scanTarget = target;
       startScan();
       btnScan.textContent = "🛑 DETENER";
       btnScanAdd.textContent = "🛑 DETENER";
     }
-    
+
     btnScan.addEventListener("click", ()=> toggleScan("MOV"));
     btnScanAdd.addEventListener("click", ()=> toggleScan("ADD"));
 
@@ -924,28 +1015,54 @@
     btnGuardar.addEventListener("click", guardarMovimiento);
 
     btnVerMovs.addEventListener("click", async ()=>{
+      stopScan();
       screenForm.style.display="none";
       screenAdd.style.display="none";
+      screenProductos.style.display="none";
       screenList.style.display="block";
       await cargarMovimientos();
     });
 
     btnAddProd.addEventListener("click", ()=>{
+      stopScan();
       screenForm.style.display="none";
       screenList.style.display="none";
+      screenProductos.style.display="none";
       screenAdd.style.display="block";
       clearAddForm_();
       scanTarget = "ADD";
     });
 
+    btnProductos.addEventListener("click", async ()=>{
+      stopScan();
+      screenForm.style.display="none";
+      screenList.style.display="none";
+      screenAdd.style.display="none";
+      screenProductos.style.display="block";
+      await cargarCatalogoPantalla_();
+    });
+
     btnBackAdd.addEventListener("click", ()=>{
+      stopScan();
       screenAdd.style.display="none";
       screenList.style.display="none";
+      screenProductos.style.display="none";
       screenForm.style.display="block";
       scanTarget = "MOV";
     });
 
     btnVolver.addEventListener("click", ()=>{
+      stopScan();
+      screenList.style.display="none";
+      screenAdd.style.display="none";
+      screenProductos.style.display="none";
+      screenForm.style.display="block";
+      scanTarget = "MOV";
+    });
+
+    btnVolverProd.addEventListener("click", ()=>{
+      stopScan();
+      screenProductos.style.display="none";
       screenList.style.display="none";
       screenAdd.style.display="none";
       screenForm.style.display="block";
@@ -957,16 +1074,16 @@
 
     btnGuardarProd.addEventListener("click", guardarProducto_);
 
+    btnRefrescarProd.addEventListener("click", cargarCatalogoPantalla_);
+    btnBuscarProd.addEventListener("click", filtrarCatalogo_);
+    pQEl.addEventListener("keydown", (e)=>{ if (e.key === "Enter") filtrarCatalogo_(); });
+
     // INIT
     ordenEl.value = "0";
     setProducto(null,"",null);
     resetTipoYcantidadUI_();
     setMsg("", false);
+    setProdMsg("", false);
   </script>
 </body>
 </html>
-
-
-
-
-
