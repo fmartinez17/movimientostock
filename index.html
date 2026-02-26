@@ -204,8 +204,8 @@
 
       <!-- botones arriba en bloque -->
       <div class="topActions" style="margin-top:0;">
-        <button id="btnVerMovs" type="button" class="btn-secondary">📄 MOVIMIENTOS</button>
-        <button id="btnAddProd" type="button" class="btn-secondary">➕ NUEVO</button>
+        <button id="btnVerMovs" type="button" class="btn-secondary">INVENTARIO</button>
+        <button id="btnAddProd" type="button" class="btn-secondary">NUEVO</button>
       </div>
 
       <button id="btnScan" type="button" class="btn-secondary">📷 ESCANEAR</button>
@@ -849,9 +849,11 @@
 
     async function startScan(){
       if (scanning) return;
+    
       scanning = true;
-      lastCode=""; sameCount=0;
-
+      lastCode="";
+      sameCount=0;
+    
       try{
         await initDetector();
         camWrapEl.style.display = "block";
@@ -861,6 +863,10 @@
         scanning=false;
         camWrapEl.style.display="none";
         stopCamera();
+    
+        btnScan.textContent = "📷 ESCANEAR";
+        btnScanAdd.textContent = "📷 ESCANEAR";
+    
         if (scanTarget === "ADD") setAddMsg("ERROR DE CÁMARA / PERMISOS", true);
         else setMsg("ERROR DE CÁMARA / PERMISOS", true);
       }
@@ -870,20 +876,28 @@
       scanning=false;
       stopCamera();
       camWrapEl.style.display="none";
+    
+      btnScan.textContent = "📷 ESCANEAR";
+      btnScanAdd.textContent = "📷 ESCANEAR";
     }
 
     // ===== EVENTS =====
-    btnScan.addEventListener("click", ()=>{
-      scanTarget = "MOV";
-      scanning ? stopScan() : startScan();
-      btnScan.textContent = scanning ? "🛑 DETENER" : "📷 ESCANEAR";
-    });
-
-    btnScanAdd.addEventListener("click", ()=>{
-      scanTarget = "ADD";
-      scanning ? stopScan() : startScan();
-      btnScanAdd.textContent = scanning ? "🛑 DETENER" : "📷 ESCANEAR";
-    });
+    function toggleScan(target){
+      if (scanning){
+        stopScan();
+        btnScan.textContent = "📷 ESCANEAR";
+        btnScanAdd.textContent = "📷 ESCANEAR";
+        return;
+      }
+    
+      scanTarget = target;
+      startScan();
+      btnScan.textContent = "🛑 DETENER";
+      btnScanAdd.textContent = "🛑 DETENER";
+    }
+    
+    btnScan.addEventListener("click", ()=> toggleScan("MOV"));
+    btnScanAdd.addEventListener("click", ()=> toggleScan("ADD"));
 
     ordenEl.addEventListener("input", ()=> { ordenEl.value = ordenEl.value.replace(/\D/g,""); });
     ordenEl.addEventListener("blur", ()=> { if (!ordenEl.value.trim()) ordenEl.value = "0"; });
@@ -937,5 +951,6 @@
   </script>
 </body>
 </html>
+
 
 
