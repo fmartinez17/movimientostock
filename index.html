@@ -89,7 +89,7 @@
 
     ::placeholder{color:rgba(11,45,92,.45)}
 
-    /* ===== POPUP BUSY (BUSCANDO / GUARDANDO) ===== */
+    /* ===== POPUP BUSY (BUSCANDO / GUARDANDO / OK / ERROR) ===== */
     .busyModal{
       position:fixed;
       inset:0;
@@ -105,9 +105,21 @@
       border:2px solid rgba(11,45,92,.18);
       border-radius:16px;
       box-shadow:0 18px 40px rgba(0,0,0,.20);
-      padding:16px 16px;
+      padding:18px 16px;
       text-align:center;
+      transform:scale(1);
+      transition:transform .18s ease, background .25s ease, border-color .25s ease, color .25s ease;
+      position:relative;
     }
+    .busyBox.pop{
+      animation:pop .18s ease;
+    }
+    @keyframes pop{
+      0%{transform:scale(1)}
+      60%{transform:scale(1.03)}
+      100%{transform:scale(1)}
+    }
+
     .busyText{
       margin-top:12px;
       font-weight:900;
@@ -123,6 +135,61 @@
       animation:spin .8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===== CHECK ANIMADO ===== */
+    .busyCheck{
+      width:44px;height:44px;
+      margin:0 auto;
+      display:none;
+    }
+    .busyCheck svg{
+      width:44px;height:44px;
+      display:block;
+    }
+    .busyCheckCircle{
+      fill:none;
+      stroke:rgba(255,255,255,.95);
+      stroke-width:4;
+      stroke-linecap:round;
+      stroke-dasharray:140;
+      stroke-dashoffset:140;
+      animation:drawCircle .42s ease forwards;
+    }
+    .busyCheckMark{
+      fill:none;
+      stroke:rgba(255,255,255,.95);
+      stroke-width:5;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+      stroke-dasharray:60;
+      stroke-dashoffset:60;
+      animation:drawCheck .35s ease .18s forwards;
+    }
+    @keyframes drawCircle{
+      to{stroke-dashoffset:0}
+    }
+    @keyframes drawCheck{
+      to{stroke-dashoffset:0}
+    }
+
+    /* ===== ESTADO SUCCESS (VERDE) ===== */
+    .busyBox.success{
+      background:linear-gradient(135deg,#0F7A3A,#1BB15F);
+      border-color:#0F7A3A;
+      color:#fff;
+    }
+    .busyBox.success .busyText{ color:#fff; }
+    .busyBox.success .busySpinner{ display:none; }
+    .busyBox.success .busyCheck{ display:block; }
+
+    /* ===== ESTADO ERROR (ROJO SUAVE) ===== */
+    .busyBox.error{
+      background:linear-gradient(135deg,#B00020,#E0354F);
+      border-color:#B00020;
+      color:#fff;
+    }
+    .busyBox.error .busyText{ color:#fff; }
+    .busyBox.error .busySpinner{ display:none; }
   </style>
 </head>
 
@@ -139,7 +206,7 @@
     <!-- SCREEN: FORM -->
     <div id="screenForm" class="card">
 
-      <!-- ✅ MOVIMIENTOS ARRIBA (en bloque) -->
+      <!-- MOVIMIENTOS ARRIBA (en bloque) -->
       <div class="topActions" style="margin-top:0;">
         <button id="btnVerMovs" type="button" class="btn-secondary">📄 MOVIMIENTOS</button>
       </div>
@@ -206,22 +273,31 @@
     </div>
   </div>
 
-  <!-- POPUP (BUSCANDO / GUARDANDO / OK / ERROR) -->
+  <!-- POPUP -->
   <div id="busyModal" class="busyModal">
-    <div class="busyBox">
-      <div class="busySpinner"></div>
-      <div id="busyText" class="busyText">BUSCANDO PRODUCTO...</div>
+    <div class="busyBox" id="busyBox">
+      <div class="busySpinner" id="busySpinner"></div>
+
+      <div class="busyCheck" id="busyCheck">
+        <svg viewBox="0 0 52 52" aria-hidden="true">
+          <circle class="busyCheckCircle" cx="26" cy="26" r="22"></circle>
+          <path class="busyCheckMark" d="M16 27 L23 34 L37 19"></path>
+        </svg>
+      </div>
+
+      <div id="busyText" class="busyText">PROCESANDO...</div>
     </div>
   </div>
 
   <script>
     // ===== CONFIG =====
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEbDR4Ns1BhfUXEsztkNWTYnQuC_saqwYxA2nCgTJsN7cXG8d9OZY7IpI87msULkIc/exec"; // <-- PEGÁ TU /exec
+    const APPS_SCRIPT_URL = "PEGA_AQUI_TU_EXEC"; // <-- PEGÁ TU /exec
     const SECRET = "PUBLI_2026_Stock!";
     const REQUIRED_SAME_READS = 2;
 
     // ===== DOM =====
     const busyModalEl = document.getElementById("busyModal");
+    const busyBoxEl = document.getElementById("busyBox");
     const busyTextEl = document.getElementById("busyText");
 
     const screenForm = document.getElementById("screenForm");
@@ -272,18 +348,45 @@
     let busyShownAt = 0;
     const BUSY_MIN_MS = 250;
 
+    function resetBusyStyle(){
+      busyBoxEl.classList.remove("success","error");
+    }
+    function popBusy(){
+      busyBoxEl.classList.remove("pop");
+      // reflow para reiniciar animación
+      void busyBoxEl.offsetWidth;
+      busyBoxEl.classList.add("pop");
+    }
+
     function showBusy(text="PROCESANDO..."){
       busyShownAt = Date.now();
+      resetBusyStyle();
       busyTextEl.textContent = (text||"").toString().toUpperCase();
       busyModalEl.style.display = "flex";
+      popBusy();
     }
     function hideBusy(){
       const elapsed = Date.now() - busyShownAt;
       const wait = Math.max(0, BUSY_MIN_MS - elapsed);
-      setTimeout(()=> { busyModalEl.style.display = "none"; }, wait);
+      setTimeout(()=>{
+        busyModalEl.style.display = "none";
+        resetBusyStyle();
+      }, wait);
     }
     function setBusyText(text=""){
       busyTextEl.textContent = (text||"").toString().toUpperCase();
+    }
+    function setBusySuccess(text="✅ OK"){
+      busyBoxEl.classList.add("success");
+      setBusyText(text);
+      popBusy();
+      navigator.vibrate?.(60);
+    }
+    function setBusyError(text="❌ ERROR"){
+      busyBoxEl.classList.add("error");
+      setBusyText(text);
+      popBusy();
+      navigator.vibrate?.(120);
     }
 
     function setMsg(t="", err=false){
@@ -334,7 +437,7 @@
 
       barcodeEl.value = clean;
 
-      // cache navegador 15s (igual mostramos popup corto para feedback)
+      // cache navegador 15s (igual mostramos feedback)
       const hit = memLookup.get(clean);
       if (hit && (Date.now() - hit.t) < 15000){
         showBusy("BUSCANDO PRODUCTO...");
@@ -342,8 +445,8 @@
         setMsg("", false);
         cantidadEl.focus();
         cantidadEl.select?.();
-        setBusyText("✅ ENCONTRADO");
-        setTimeout(()=> hideBusy(), 250);
+        setBusySuccess("✅ ENCONTRADO");
+        setTimeout(()=> hideBusy(), 380);
         return;
       }
 
@@ -363,13 +466,13 @@
         cantidadEl.focus();
         cantidadEl.select?.();
 
-        setBusyText("✅ ENCONTRADO");
-        setTimeout(()=> hideBusy(), 250);
+        setBusySuccess("✅ ENCONTRADO");
+        setTimeout(()=> hideBusy(), 380);
       }catch(e){
         setProducto(null,"",null);
         setMsg(String(e.message || e).toUpperCase(), true);
 
-        setBusyText("❌ NO SE PUDO");
+        setBusyError("❌ NO SE PUDO");
         setTimeout(()=> hideBusy(), 650);
       }
     }
@@ -487,17 +590,17 @@
           body: JSON.stringify(data)
         });
 
-        // invalida cache local de ese barcode para que no muestre stock viejo
+        // invalida cache local para no mostrar stock viejo
         memLookup.delete(barcode);
 
-        setBusyText("✅ GUARDADO");
-        setTimeout(()=> hideBusy(), 450);
+        setBusySuccess("✅ GUARDADO");
+        setTimeout(()=> hideBusy(), 700);
 
         setMsg("", false);
         limpiarCampos();
       }catch(e){
-        setBusyText("❌ ERROR AL GUARDAR");
-        setTimeout(()=> hideBusy(), 700);
+        setBusyError("❌ ERROR AL GUARDAR");
+        setTimeout(()=> hideBusy(), 900);
         setMsg("ERROR AL ENVIAR", true);
       }finally{
         btnGuardar.disabled = !currentProducto;
@@ -595,4 +698,3 @@
   </script>
 </body>
 </html>
-
