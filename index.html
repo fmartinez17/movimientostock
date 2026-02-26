@@ -122,6 +122,10 @@
 
     <!-- SCREEN: FORM -->
     <div id="screenForm" class="card">
+
+      <!-- ✅ MOVIMIENTOS ARRIBA -->
+      <button id="btnVerMovs" type="button" class="btn-secondary">📄 MOVIMIENTOS</button>
+
       <button id="btnScan" type="button" class="btn-secondary">📷 ESCANEAR</button>
 
       <label>CÓDIGO DE BARRAS</label>
@@ -132,9 +136,6 @@
       </div>
 
       <div id="producto" class="hint"></div>
-
-      <!-- SOLO MOVIMIENTOS COMO BLOQUE -->
-      <button id="btnVerMovs" type="button" class="btn-secondary">📄 MOVIMIENTOS</button>
 
       <label>ORDEN (SOLO NÚMEROS)</label>
       <input id="orden" inputmode="numeric" pattern="[0-9]*" placeholder="EJ: 0" value="0" />
@@ -199,7 +200,6 @@
 
     // ===== DOM =====
     const toastEl = document.getElementById("toast");
-
     const screenForm = document.getElementById("screenForm");
     const screenList = document.getElementById("screenList");
 
@@ -247,7 +247,6 @@
       listMsgEl.className = "msg" + (err ? " err" : "");
       listMsgEl.textContent = (t||"").toString().toUpperCase();
     }
-
     function showToast(text){
       toastEl.textContent = (text||"").toString().toUpperCase();
       toastEl.classList.add("show");
@@ -300,6 +299,7 @@
       return p ? { ok:true, producto:p } : { ok:false, producto:null };
     }
 
+    // ✅ STOCK REAL CALCULADO EN BACKEND DESDE "MOVIMIENTOS"
     async function fetchStock(sku){
       try{
         const url = `${APPS_SCRIPT_URL}?action=stock&secret=${encodeURIComponent(SECRET)}&sku=${encodeURIComponent(sku)}`;
