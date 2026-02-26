@@ -68,18 +68,6 @@
 
     .msg{margin-top:10px;font-size:13px;color:var(--muted);min-height:18px;letter-spacing:.3px}
     .msg.err{color:var(--danger);font-weight:900}
-    .msg.ok{color:var(--ok);font-weight:900}
-
-    .topActions{display:flex;gap:10px;margin-top:12px}
-    .topActions button{flex:1}
-
-    .toggles{display:flex;gap:10px;margin-top:12px}
-    .toggle{
-      flex:1;display:flex;align-items:center;gap:10px;
-      padding:10px 12px;border-radius:12px;border:2px solid var(--border);
-      background:#fff;font-weight:900;color:var(--brand)
-    }
-    .toggle input{width:18px;height:18px;margin:0}
 
     .filterRow{display:flex;gap:10px;margin-top:12px}
     .filterRow > *{flex:1}
@@ -94,20 +82,9 @@
     .liTop{display:flex;justify-content:space-between;gap:10px;font-weight:900}
     .liSub{margin-top:6px;color:var(--muted);font-weight:800;font-size:12px;line-height:1.35}
 
-    .dashGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
-    .dashCard{border:1px solid rgba(11,45,92,.10);background:rgba(11,45,92,.03);border-radius:12px;padding:10px 12px}
-    .dashNum{font-weight:900;font-size:20px}
-    .dashLbl{color:var(--muted);font-weight:900;font-size:12px;margin-top:4px}
-
     ::placeholder{color:rgba(11,45,92,.45)}
-    .flash{animation:flash 0.8s ease}
-    @keyframes flash{
-      0%{transform:scale(1)}
-      30%{transform:scale(1.01)}
-      100%{transform:scale(1)}
-    }
 
-    /* ===== TOAST VERDE ===== */
+    /* TOAST VERDE */
     .toast{
       position:fixed;
       left:50%;
@@ -156,21 +133,8 @@
 
       <div id="producto" class="hint"></div>
 
-      <div class="toggles">
-        <div class="toggle">
-          <input id="chkRapid" type="checkbox" />
-          <div>MODO RÁPIDO</div>
-        </div>
-        <div class="toggle">
-          <input id="chkAutoSave" type="checkbox" />
-          <div>AUTO GUARDAR</div>
-        </div>
-      </div>
-
-      <div class="topActions">
-        <button id="btnVerMovs" type="button" class="btn-secondary">📄 MOVIMIENTOS</button>
-        <button id="btnDashboard" type="button" class="btn-secondary">📊 DASHBOARD</button>
-      </div>
+      <!-- SOLO MOVIMIENTOS COMO BLOQUE -->
+      <button id="btnVerMovs" type="button" class="btn-secondary">📄 MOVIMIENTOS</button>
 
       <label>ORDEN (SOLO NÚMEROS)</label>
       <input id="orden" inputmode="numeric" pattern="[0-9]*" placeholder="EJ: 0" value="0" />
@@ -196,9 +160,9 @@
 
     <!-- SCREEN: MOVIMIENTOS -->
     <div id="screenList" class="card" style="display:none;">
-      <div class="topActions">
-        <button id="btnVolver" type="button" class="btn-secondary">⬅️ VOLVER</button>
-        <button id="btnRefrescar" type="button" class="btn-secondary">🔄 REFRESCAR</button>
+      <div style="display:flex;gap:10px;">
+        <button id="btnVolver" type="button" class="btn-secondary" style="flex:1;">⬅️ VOLVER</button>
+        <button id="btnRefrescar" type="button" class="btn-secondary" style="flex:1;">🔄 REFRESCAR</button>
       </div>
 
       <div class="filterRow">
@@ -221,44 +185,13 @@
       <div id="listMsg" class="msg"></div>
       <div id="listContainer"></div>
     </div>
-
-    <!-- SCREEN: DASHBOARD -->
-    <div id="screenDash" class="card" style="display:none;">
-      <div class="topActions">
-        <button id="btnVolverDash" type="button" class="btn-secondary">⬅️ VOLVER</button>
-        <button id="btnRefrescarDash" type="button" class="btn-secondary">🔄 REFRESCAR</button>
-      </div>
-
-      <div id="dashMsg" class="msg"></div>
-      <div class="dashGrid">
-        <div class="dashCard">
-          <div id="dEntradas" class="dashNum">0</div>
-          <div class="dashLbl">ENTRADAS HOY</div>
-        </div>
-        <div class="dashCard">
-          <div id="dSalidas" class="dashNum">0</div>
-          <div class="dashLbl">SALIDAS HOY</div>
-        </div>
-        <div class="dashCard">
-          <div id="dMovs" class="dashNum">0</div>
-          <div class="dashLbl">MOVIMIENTOS HOY</div>
-        </div>
-        <div class="dashCard">
-          <div class="dashNum">TOP 5</div>
-          <div class="dashLbl">PRODUCTOS (CANT. MOV.)</div>
-        </div>
-      </div>
-
-      <div id="topContainer"></div>
-    </div>
   </div>
 
-  <!-- TOAST -->
   <div id="toast" class="toast">GUARDADO</div>
 
   <script>
     // ===== CONFIG =====
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8UHiav_LdmlUBVBEfklz88n1FkZZIdCU34Ypy_ZZYh6d6YaBnPmrKPYcfMCnX78sr/exec";
+    const APPS_SCRIPT_URL = "PEGA_AQUI_TU_EXEC";
     const SECRET = "PUBLI_2026_Stock!";
     const SPREADSHEET_ID = "1xdyknuy-wQID0VHMCEuvYc4fz0ljZTGfL7ek7U_M1wE";
     const CATALOG_SHEET_NAME = "catalogo";
@@ -269,17 +202,12 @@
 
     const screenForm = document.getElementById("screenForm");
     const screenList = document.getElementById("screenList");
-    const screenDash = document.getElementById("screenDash");
 
     const videoEl = document.getElementById("video");
     const camWrapEl = document.getElementById("camWrap");
     const btnScan = document.getElementById("btnScan");
     const btnGuardar = document.getElementById("btnGuardar");
     const btnVerMovs = document.getElementById("btnVerMovs");
-    const btnDashboard = document.getElementById("btnDashboard");
-
-    const chkRapid = document.getElementById("chkRapid");
-    const chkAutoSave = document.getElementById("chkAutoSave");
 
     const ordenEl = document.getElementById("orden");
     const tipoMovEl = document.getElementById("tipo_mov");
@@ -300,21 +228,10 @@
     const listMsgEl = document.getElementById("listMsg");
     const listContainer = document.getElementById("listContainer");
 
-    // dash
-    const btnVolverDash = document.getElementById("btnVolverDash");
-    const btnRefrescarDash = document.getElementById("btnRefrescarDash");
-    const dashMsgEl = document.getElementById("dashMsg");
-    const dEntradas = document.getElementById("dEntradas");
-    const dSalidas = document.getElementById("dSalidas");
-    const dMovs = document.getElementById("dMovs");
-    const topContainer = document.getElementById("topContainer");
-
     // ===== STATE =====
     let catalogoMap = {};
     let currentProducto = null;
     let currentBarcodeValid = "";
-    let currentStock = null;
-
     let stream = null;
     let detector = null;
     let scanning = false;
@@ -322,17 +239,13 @@
     let lastCode = "";
     let sameCount = 0;
 
-    function setMsg(t="", cls="") {
-      msgEl.className = "msg" + (cls ? " " + cls : "");
+    function setMsg(t="", err=false){
+      msgEl.className = "msg" + (err ? " err" : "");
       msgEl.textContent = (t||"").toString().toUpperCase();
     }
-    function setListMsg(t="", cls="") {
-      listMsgEl.className = "msg" + (cls ? " " + cls : "");
+    function setListMsg(t="", err=false){
+      listMsgEl.className = "msg" + (err ? " err" : "");
       listMsgEl.textContent = (t||"").toString().toUpperCase();
-    }
-    function setDashMsg(t="", cls="") {
-      dashMsgEl.className = "msg" + (cls ? " " + cls : "");
-      dashMsgEl.textContent = (t||"").toString().toUpperCase();
     }
 
     function showToast(text){
@@ -342,10 +255,9 @@
       setTimeout(()=> toastEl.classList.remove("show"), 1400);
     }
 
-    function setProductoValido(producto, barcode, stock) {
+    function setProductoValido(producto, barcode, stock){
       currentProducto = producto || null;
       currentBarcodeValid = producto ? (barcode || "") : "";
-      currentStock = (typeof stock === "number") ? stock : null;
 
       if (!producto){
         productoEl.style.display = "none";
@@ -355,14 +267,14 @@
       }
 
       const line1 = `PRODUCTO: ${producto.descripcion||"-"} | SKU: ${producto.sku||"-"}`;
-      const line2 = (typeof currentStock === "number") ? `STOCK ACTUAL: ${currentStock}` : `STOCK ACTUAL: ...`;
+      const line2 = (typeof stock === "number") ? `STOCK ACTUAL: ${stock}` : `STOCK ACTUAL: ...`;
 
       productoEl.innerHTML = `<div>${line1}</div><div class="line2">${line2}</div>`;
       productoEl.style.display = "block";
       btnGuardar.disabled = false;
     }
 
-    async function cargarCatalogoSilencioso() {
+    async function cargarCatalogoSilencioso(){
       const tq = encodeURIComponent("select A,B,C");
       const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=${encodeURIComponent(CATALOG_SHEET_NAME)}&tq=${tq}&tqx=out:json`;
       const res = await fetch(url, { cache:"no-store" });
@@ -372,7 +284,7 @@
 
       const rows = data?.table?.rows || [];
       const map = {};
-      for (const r of rows) {
+      for (const r of rows){
         const c = r.c || [];
         const bc = (c[0]?.v ?? "").toString().trim();
         const sku = (c[1]?.v ?? "").toString().trim();
@@ -383,7 +295,7 @@
       catalogoMap = map;
     }
 
-    function validarBarcodeLocal(barcode) {
+    function validarBarcodeLocal(barcode){
       const p = catalogoMap[barcode];
       return p ? { ok:true, producto:p } : { ok:false, producto:null };
     }
@@ -423,39 +335,20 @@
       videoEl.srcObject = null;
     }
 
-    async function handleValidBarcode(code){
+    async function handleBarcode(code){
       barcodeEl.value = code;
-      const v = validarBarcodeLocal(code);
 
+      const v = validarBarcodeLocal(code);
       if (!v.ok){
         setProductoValido(null,"");
-        setMsg("", "");
-        if (chkRapid.checked) startScan();
+        setMsg("", false);
         return;
       }
 
       setProductoValido(v.producto, code, null);
       const stock = await fetchStock(v.producto.sku);
       setProductoValido(v.producto, code, (typeof stock === "number") ? stock : null);
-
-      setMsg("", "");
-
-      if (chkRapid.checked) {
-        if (chkAutoSave.checked && canAutoSave_()) {
-          await guardarMovimiento_();
-        } else {
-          cantidadEl.focus();
-          cantidadEl.select?.();
-        }
-        startScan();
-      }
-    }
-
-    function canAutoSave_(){
-      const orden = ordenEl.value.trim();
-      const tipo_mov = (tipoMovEl.value || "").trim();
-      const cantidad = (cantidadEl.value || "").trim();
-      return !!(orden && tipo_mov && currentProducto && currentBarcodeValid && cantidad && Number(cantidad) > 0);
+      setMsg("", false);
     }
 
     async function scanLoop(){
@@ -470,7 +363,7 @@
 
             if (sameCount >= REQUIRED_SAME_READS){
               stopScan();
-              await handleValidBarcode(code);
+              await handleBarcode(code);
               return;
             }
           }
@@ -495,7 +388,7 @@
         btnScan.textContent="📷 ESCANEAR";
         camWrapEl.style.display="none";
         stopCamera();
-        setMsg("ERROR DE CÁMARA / PERMISOS", "err");
+        setMsg("ERROR DE CÁMARA / PERMISOS", true);
       }
     }
 
@@ -507,16 +400,14 @@
     }
 
     function limpiarCamposDespuesDeGuardar(){
-      // por defecto orden queda en 0 (si lo borran, lo volvemos a 0)
       if (!ordenEl.value.trim()) ordenEl.value = "0";
-
       barcodeEl.value = "";
       obsEl.value = "";
       cantidadEl.value = "1";
       setProductoValido(null,"");
     }
 
-    async function guardarMovimiento_(){
+    async function guardarMovimiento(){
       const orden = ordenEl.value.trim() || "0";
       const tipo_mov = (tipoMovEl.value || "").trim().toUpperCase();
       const barcode = barcodeEl.value.trim();
@@ -524,7 +415,7 @@
       const observacion = (obsEl.value || "").trim().toUpperCase();
 
       if (!currentProducto || currentBarcodeValid !== barcode) { btnGuardar.disabled = true; return; }
-      if (!tipo_mov || !barcode || !cantidad || Number(cantidad) <= 0) { setMsg("FALTAN DATOS", "err"); return; }
+      if (!tipo_mov || !barcode || !cantidad || Number(cantidad) <= 0) { setMsg("FALTAN DATOS", true); return; }
 
       btnGuardar.disabled = true;
 
@@ -549,17 +440,17 @@
         });
 
         showToast("✅ MOVIMIENTO INGRESADO");
-        setMsg("", "");
+        setMsg("", false);
         limpiarCamposDespuesDeGuardar();
 
       }catch(e){
-        setMsg("ERROR AL ENVIAR", "err");
+        setMsg("ERROR AL ENVIAR", true);
       }finally{
         btnGuardar.disabled = !currentProducto;
       }
     }
 
-    // ===== LISTA / DASH (sin cambios de lógica acá, quedan igual) =====
+    // ===== MOVIMIENTOS LIST =====
     function fmtFecha(iso){
       try{
         const d = new Date(iso);
@@ -574,7 +465,7 @@
     }
 
     async function cargarMovimientos(){
-      setListMsg("CARGANDO...");
+      setListMsg("CARGANDO...", false);
       listContainer.innerHTML = "";
 
       const tipo = (fTipo.value || "").trim();
@@ -592,9 +483,9 @@
         if (!json.ok) throw new Error(json.error || "ERROR");
 
         const items = json.items || [];
-        if (!items.length){ setListMsg("SIN RESULTADOS"); return; }
+        if (!items.length){ setListMsg("SIN RESULTADOS", false); return; }
 
-        setListMsg("");
+        setListMsg("", false);
         for (const it of items){
           const fecha = fmtFecha(it.timestamp);
           const tipoMov = String(it.tipo_mov||"");
@@ -612,37 +503,7 @@
           listContainer.appendChild(div);
         }
       }catch(e){
-        setListMsg("NO SE PUDO CARGAR", "err");
-      }
-    }
-
-    async function cargarDashboard(){
-      setDashMsg("CARGANDO...");
-      topContainer.innerHTML = "";
-      try{
-        const url = `${APPS_SCRIPT_URL}?action=dashboard&secret=${encodeURIComponent(SECRET)}`;
-        const res = await fetch(url, { cache:"no-store" });
-        const json = await res.json();
-        if (!json.ok) throw new Error(json.error || "ERROR");
-
-        dEntradas.textContent = Number(json.today?.entradas || 0);
-        dSalidas.textContent = Number(json.today?.salidas || 0);
-        dMovs.textContent = Number(json.today?.movimientos || 0);
-
-        const top = json.top || [];
-        for (const t of top){
-          const div = document.createElement("div");
-          div.className = "listItem";
-          div.innerHTML = `
-            <div class="liTop"><div>${(t.descripcion||"")}</div><div>${Number(t.cantidad||0)}</div></div>
-            <div class="liSub">${t.sku ? "SKU: " + t.sku : ""}</div>
-          `;
-          topContainer.appendChild(div);
-        }
-
-        setDashMsg("");
-      }catch(e){
-        setDashMsg("NO SE PUDO CARGAR", "err");
+        setListMsg("NO SE PUDO CARGAR", true);
       }
     }
 
@@ -650,42 +511,23 @@
     btnScan.addEventListener("click", ()=> scanning ? stopScan() : startScan());
 
     ordenEl.addEventListener("input", ()=> { ordenEl.value = ordenEl.value.replace(/\D/g,""); });
-
-    // si el usuario lo borra, lo devolvemos a 0 al salir del campo
-    ordenEl.addEventListener("blur", ()=> {
-      if (!ordenEl.value.trim()) ordenEl.value = "0";
-    });
+    ordenEl.addEventListener("blur", ()=> { if (!ordenEl.value.trim()) ordenEl.value = "0"; });
 
     barcodeEl.addEventListener("change", async ()=>{
       const code = barcodeEl.value.trim();
-      if (!code){ setProductoValido(null,""); setMsg(""); return; }
-      await handleValidBarcode(code);
+      if (!code){ setProductoValido(null,""); setMsg("", false); return; }
+      await handleBarcode(code);
     });
 
-    btnGuardar.addEventListener("click", guardarMovimiento_);
+    btnGuardar.addEventListener("click", guardarMovimiento);
 
     btnVerMovs.addEventListener("click", async ()=>{
       screenForm.style.display="none";
-      screenDash.style.display="none";
       screenList.style.display="block";
       await cargarMovimientos();
     });
 
-    btnDashboard.addEventListener("click", async ()=>{
-      screenForm.style.display="none";
-      screenList.style.display="none";
-      screenDash.style.display="block";
-      await cargarDashboard();
-    });
-
     btnVolver.addEventListener("click", ()=>{
-      screenList.style.display="none";
-      screenDash.style.display="none";
-      screenForm.style.display="block";
-    });
-
-    btnVolverDash.addEventListener("click", ()=>{
-      screenDash.style.display="none";
       screenList.style.display="none";
       screenForm.style.display="block";
     });
@@ -693,13 +535,11 @@
     btnRefrescar.addEventListener("click", cargarMovimientos);
     btnAplicarFiltros.addEventListener("click", cargarMovimientos);
 
-    btnRefrescarDash.addEventListener("click", cargarDashboard);
-
-    // INIT
+    // init
     ordenEl.value = "0";
     setProductoValido(null,"");
-    setMsg("");
-    cargarCatalogoSilencioso().catch(()=> setMsg("ERROR CARGANDO CATÁLOGO", "err"));
+    setMsg("", false);
+    cargarCatalogoSilencioso().catch(()=> setMsg("ERROR CARGANDO CATÁLOGO", true));
   </script>
 </body>
 </html>
