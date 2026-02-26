@@ -69,11 +69,9 @@
     .msg{margin-top:10px;font-size:13px;color:var(--muted);min-height:18px;letter-spacing:.3px}
     .msg.err{color:var(--danger);font-weight:900}
 
-    /* botones en bloque */
     .topActions{display:flex;gap:10px;margin-top:12px}
     .topActions button{flex:1}
 
-    /* ✅ NAV EN BLOQUES INDEPENDIENTES (vertical) */
     .navBlocks{display:flex;flex-direction:column;gap:10px;margin-top:0;}
     .navBlocks button{margin-top:0;width:100%;}
 
@@ -93,10 +91,10 @@
 
     .liTop{display:flex;justify-content:space-between;gap:10px;font-weight:900}
     .liSub{margin-top:6px;color:var(--muted);font-weight:800;font-size:12px;line-height:1.35}
+    .liStock{margin-top:6px;font-weight:900;font-size:12px;color:var(--danger);letter-spacing:.4px;}
 
     ::placeholder{color:rgba(11,45,92,.45)}
 
-    /* ===== POPUP BUSY ===== */
     .busyModal{
       position:fixed;
       inset:0;
@@ -140,7 +138,6 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* check animado */
     .busyCheck{
       width:44px;height:44px;
       margin:0 auto;
@@ -205,8 +202,6 @@
 
     <!-- SCREEN: FORM -->
     <div id="screenForm" class="card">
-
-      <!-- ✅ NAV EN BLOQUES INDEPENDIENTES -->
       <div class="navBlocks">
         <button id="btnVerMovs" type="button" class="btn-secondary">📋 MOVIMIENTOS</button>
         <button id="btnAddProd" type="button" class="btn-secondary">➕ NUEVO PRODUCTO</button>
@@ -300,7 +295,7 @@
       <div id="addMsg" class="msg"></div>
     </div>
 
-    <!-- ✅ SCREEN: PRODUCTOS (CATALOGO) -->
+    <!-- SCREEN: PRODUCTOS -->
     <div id="screenProductos" class="card" style="display:none;">
       <div class="topActions" style="margin-top:0;">
         <button id="btnVolverProd" type="button" class="btn-secondary">⬅️ VOLVER</button>
@@ -332,7 +327,7 @@
 
   <script>
     // ===== CONFIG =====
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxEWgQ5A7R2dVY02tL18scTuoPp-XTe5Q1Uwyo99hNjyNo_sM46Lk3CY4lpO_ciqI6q/exec"; // <-- TU /exec
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwTBNq8JFmUIRQalBm8U-AtGaYF9wjyUVYysfUVUSFlYarlSVbexYPaURqbewaBwqgO/exec"; // <-- TU /exec
     const SECRET = "PUBLI_2026_Stock!";
     const REQUIRED_SAME_READS = 2;
 
@@ -417,7 +412,7 @@
     const BUSY_MIN_MS = 250;
 
     // catálogo cache
-    let catalogCache = []; // [{barcode, sku, descripcion}]
+    let catalogCache = []; // [{barcode, sku, descripcion, stock}]
 
     function resetBusyStyle(){ busyBoxEl.classList.remove("success","error"); }
     function popBusy(){
@@ -480,9 +475,7 @@
       btnGuardar.textContent = "✅ GUARDAR";
     }
 
-    function resetOrden_(){
-      ordenEl.value = "0";
-    }
+    function resetOrden_(){ ordenEl.value = "0"; }
 
     function resetFormAfterAction_(){
       resetOrden_();
@@ -535,8 +528,6 @@
       if (!clean) return;
 
       barcodeEl.value = clean;
-
-      // al buscar producto: reset orden/tipo/cantidad
       resetFormAfterAction_();
 
       const hit = memLookup.get(clean);
@@ -591,7 +582,7 @@
         const j = await catFind(clean);
         if (j.exists){
           productoAddHintEl.innerHTML =
-            `<div>YA EXISTE EN CATÁLOGO</div><div class="line2">SKU: ${j.sku||"-"} | ${j.descripcion||"-"}</div>`;
+            `<div>YA EXISTE EN CATÁLOGO</div><div class="line2">SKU: ${j.sku||"-"} | ${j.descripcion||"-"} | STOCK: ${Number(j.stock||0)}</div>`;
           productoAddHintEl.style.display = "block";
           addSkuEl.value = j.sku || "";
           addDescEl.value = j.descripcion || "";
@@ -609,7 +600,6 @@
       }
     }
 
-    // ===== AJUSTE UX =====
     function onTipoChange_(){
       const t = (tipoMovEl.value || "").toUpperCase();
       if (t === "AJUSTE"){
@@ -709,7 +699,9 @@
           body: JSON.stringify(data)
         });
 
+        // limpiar cache lookup y catálogo (stock cambió)
         memLookup.delete(barcode);
+        catalogCache = [];
 
         setBusySuccess(tipo_sel === "AJUSTE" ? "✅ AJUSTE APLICADO" : "✅ GUARDADO");
         setTimeout(()=> hideBusy(), 700);
@@ -725,7 +717,6 @@
       }
     }
 
-    // ===== MOVIMIENTOS LIST =====
     function fmtFecha(iso){
       try{
         const d = new Date(iso);
@@ -796,7 +787,6 @@
       }
     }
 
-    // ===== AGREGAR PRODUCTO =====
     function clearAddForm_(){
       addBarcodeEl.value = "";
       addSkuEl.value = "";
@@ -842,7 +832,7 @@
         setAddMsg("", false);
         clearAddForm_();
 
-        // refresca cache de catálogo (opcional)
+        // refrescar cache de catálogo
         catalogCache = [];
       }catch(e){
         setBusyError("❌ ERROR");
@@ -853,7 +843,7 @@
       }
     }
 
-    // ===== PRODUCTOS (CATALOGO) =====
+    // ===== PRODUCTOS =====
     function renderCatalog_(items){
       prodContainer.innerHTML = "";
       if (!items.length){
@@ -861,14 +851,18 @@
         return;
       }
       setProdMsg("", false);
+
       for (const it of items){
         const bc = String(it.barcode||"");
         const sku = String(it.sku||"");
         const desc = String(it.descripcion||"");
+        const stock = Number(it.stock||0);
+
         const div = document.createElement("div");
         div.className = "listItem";
         div.innerHTML = `
           <div class="liTop"><div>${sku || "-"}</div><div>${bc || "-"}</div></div>
+          <div class="liStock">STOCK: ${stock}</div>
           <div class="liSub">${desc || "-"}</div>
         `;
         prodContainer.appendChild(div);
@@ -924,7 +918,6 @@
       rafId = null;
       if (stream) stream.getTracks().forEach(t=>t.stop());
       stream = null;
-      // ✅ limpiar ambos videos
       videoEl.srcObject = null;
       videoAddEl.srcObject = null;
     }
@@ -989,7 +982,6 @@
       btnScanAdd.textContent = "📷 ESCANEAR";
     }
 
-    // ===== EVENTS =====
     function toggleScan(target){
       if (scanning){
         stopScan();
