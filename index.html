@@ -624,7 +624,7 @@
           return;
         }
 
-        tipo_mov = diff > 0 ? "ENTRADA | AJUSTE" : "SALIDA | AJUSTE";
+        tipo_mov = diff > 0 ? "ENTRADA" : "SALIDA";
         cantidad = Math.abs(diff);
 
         const audit = `AJUSTE AUTOMÁTICO | STOCK REAL: ${stockReal} | SISTEMA: ${currentStock} | DIF: ${diff}`;
@@ -726,7 +726,9 @@
         setListMsg("", false);
         for (const it of items){
           const fecha = fmtFecha(it.timestamp);
-          const tipoMov = String(it.tipo_mov||"");
+          let tipoMov = String(it.tipo_mov||"");
+          const isAjuste = String(it.observacion||"").toUpperCase().includes("AJUSTE AUTOMÁTICO");
+          if (isAjuste) tipoMov = `${tipoMov} | AJUSTE`;
           const prod = String(it.descripcion||"");
           const cant = Number(it.cantidad||0);
           const obs = String(it.observacion||"");
@@ -935,4 +937,5 @@
   </script>
 </body>
 </html>
+
 
