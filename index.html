@@ -624,10 +624,10 @@
           return;
         }
 
-        tipo_mov = diff > 0 ? "ENTRADA" : "SALIDA";
+        tipo_mov = diff > 0 ? "ENTRADA | AJUSTE" : "SALIDA | AJUSTE";
         cantidad = Math.abs(diff);
 
-        const audit = `AJUSTE AUTOMÁTICO | STOCK REAL:${stockReal} | SISTEMA:${currentStock} | DIF:${diff}`;
+        const audit = `AJUSTE AUTOMÁTICO | STOCK REAL: ${stockReal} | SISTEMA: ${currentStock} | DIF: ${diff}`;
         observacion = obsUser ? (audit + " | " + obsUser) : audit;
       }else{
         if (!cantidadRaw || isNaN(cantidad) || cantidad <= 0){
@@ -935,3 +935,4 @@
   </script>
 </body>
 </html>
+
