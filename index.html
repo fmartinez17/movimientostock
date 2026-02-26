@@ -100,14 +100,7 @@
     .dashLbl{color:var(--muted);font-weight:900;font-size:12px;margin-top:4px}
 
     ::placeholder{color:rgba(11,45,92,.45)}
-    .flash{animation:flash 0.8s ease}
-    @keyframes flash{
-      0%{transform:scale(1)}
-      30%{transform:scale(1.01)}
-      100%{transform:scale(1)}
-    }
 
-    /* ===== TOAST VERDE ===== */
     /* TOAST VERDE */
     .toast{
       position:fixed;
@@ -172,8 +165,6 @@
         <button id="btnVerMovs" type="button" class="btn-secondary">📄 MOVIMIENTOS</button>
         <button id="btnDashboard" type="button" class="btn-secondary">📊 DASHBOARD</button>
       </div>
-      <!-- SOLO MOVIMIENTOS COMO BLOQUE -->
-      <button id="btnVerMovs" type="button" class="btn-secondary">📄 MOVIMIENTOS</button>
 
       <label>ORDEN (SOLO NÚMEROS)</label>
       <input id="orden" inputmode="numeric" pattern="[0-9]*" placeholder="EJ: 0" value="0" />
@@ -202,9 +193,6 @@
       <div class="topActions">
         <button id="btnVolver" type="button" class="btn-secondary">⬅️ VOLVER</button>
         <button id="btnRefrescar" type="button" class="btn-secondary">🔄 REFRESCAR</button>
-      <div style="display:flex;gap:10px;">
-        <button id="btnVolver" type="button" class="btn-secondary" style="flex:1;">⬅️ VOLVER</button>
-        <button id="btnRefrescar" type="button" class="btn-secondary" style="flex:1;">🔄 REFRESCAR</button>
       </div>
 
       <div class="filterRow">
@@ -259,13 +247,11 @@
     </div>
   </div>
 
-  <!-- TOAST -->
   <div id="toast" class="toast">GUARDADO</div>
 
   <script>
     // ===== CONFIG =====
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8UHiav_LdmlUBVBEfklz88n1FkZZIdCU34Ypy_ZZYh6d6YaBnPmrKPYcfMCnX78sr/exec";
-    const APPS_SCRIPT_URL = "PEGA_AQUI_TU_EXEC";
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx9x5iVNpibyZ0Nnb7RNLuny9VlxPchTsl0Y-eXvpcb1H4iybe4T3LK82YJ04nmiH1p/exec"; // <-- tu URL deploy (/exec)
     const SECRET = "PUBLI_2026_Stock!";
     const SPREADSHEET_ID = "1xdyknuy-wQID0VHMCEuvYc4fz0ljZTGfL7ek7U_M1wE";
     const CATALOG_SHEET_NAME = "catalogo";
@@ -329,20 +315,16 @@
     let lastCode = "";
     let sameCount = 0;
 
-    function setMsg(t="", cls="") {
-      msgEl.className = "msg" + (cls ? " " + cls : "");
     function setMsg(t="", err=false){
       msgEl.className = "msg" + (err ? " err" : "");
       msgEl.textContent = (t||"").toString().toUpperCase();
     }
-    function setListMsg(t="", cls="") {
-      listMsgEl.className = "msg" + (cls ? " " + cls : "");
     function setListMsg(t="", err=false){
       listMsgEl.className = "msg" + (err ? " err" : "");
       listMsgEl.textContent = (t||"").toString().toUpperCase();
     }
-    function setDashMsg(t="", cls="") {
-      dashMsgEl.className = "msg" + (cls ? " " + cls : "");
+    function setDashMsg(t="", err=false){
+      dashMsgEl.className = "msg" + (err ? " err" : "");
       dashMsgEl.textContent = (t||"").toString().toUpperCase();
     }
 
@@ -353,7 +335,6 @@
       setTimeout(()=> toastEl.classList.remove("show"), 1400);
     }
 
-    function setProductoValido(producto, barcode, stock) {
     function setProductoValido(producto, barcode, stock){
       currentProducto = producto || null;
       currentBarcodeValid = producto ? (barcode || "") : "";
@@ -367,7 +348,6 @@
       }
 
       const line1 = `PRODUCTO: ${producto.descripcion||"-"} | SKU: ${producto.sku||"-"}`;
-      const line2 = (typeof currentStock === "number") ? `STOCK ACTUAL: ${currentStock}` : `STOCK ACTUAL: ...`;
       const line2 = (typeof stock === "number") ? `STOCK ACTUAL: ${stock}` : `STOCK ACTUAL: ...`;
 
       productoEl.innerHTML = `<div>${line1}</div><div class="line2">${line2}</div>`;
@@ -375,7 +355,6 @@
       btnGuardar.disabled = false;
     }
 
-    async function cargarCatalogoSilencioso() {
     async function cargarCatalogoSilencioso(){
       const tq = encodeURIComponent("select A,B,C");
       const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=${encodeURIComponent(CATALOG_SHEET_NAME)}&tq=${tq}&tqx=out:json`;
@@ -386,7 +365,6 @@
 
       const rows = data?.table?.rows || [];
       const map = {};
-      for (const r of rows) {
       for (const r of rows){
         const c = r.c || [];
         const bc = (c[0]?.v ?? "").toString().trim();
@@ -398,7 +376,6 @@
       catalogoMap = map;
     }
 
-    function validarBarcodeLocal(barcode) {
     function validarBarcodeLocal(barcode){
       const p = catalogoMap[barcode];
       return p ? { ok:true, producto:p } : { ok:false, producto:null };
@@ -439,17 +416,14 @@
       videoEl.srcObject = null;
     }
 
-    async function handleValidBarcode(code){
     async function handleBarcode(code){
       barcodeEl.value = code;
-      const v = validarBarcodeLocal(code);
 
       const v = validarBarcodeLocal(code);
       if (!v.ok){
         setProductoValido(null,"");
-        setMsg("", "");
-        if (chkRapid.checked) startScan();
         setMsg("", false);
+        if (chkRapid.checked) startScan();
         return;
       }
 
@@ -457,11 +431,11 @@
       const stock = await fetchStock(v.producto.sku);
       setProductoValido(v.producto, code, (typeof stock === "number") ? stock : null);
 
-      setMsg("", "");
+      setMsg("", false);
 
       if (chkRapid.checked) {
         if (chkAutoSave.checked && canAutoSave_()) {
-          await guardarMovimiento_();
+          await guardarMovimiento();
         } else {
           cantidadEl.focus();
           cantidadEl.select?.();
@@ -475,7 +449,6 @@
       const tipo_mov = (tipoMovEl.value || "").trim();
       const cantidad = (cantidadEl.value || "").trim();
       return !!(orden && tipo_mov && currentProducto && currentBarcodeValid && cantidad && Number(cantidad) > 0);
-      setMsg("", false);
     }
 
     async function scanLoop(){
@@ -490,7 +463,6 @@
 
             if (sameCount >= REQUIRED_SAME_READS){
               stopScan();
-              await handleValidBarcode(code);
               await handleBarcode(code);
               return;
             }
@@ -516,7 +488,6 @@
         btnScan.textContent="📷 ESCANEAR";
         camWrapEl.style.display="none";
         stopCamera();
-        setMsg("ERROR DE CÁMARA / PERMISOS", "err");
         setMsg("ERROR DE CÁMARA / PERMISOS", true);
       }
     }
@@ -529,16 +500,13 @@
     }
 
     function limpiarCamposDespuesDeGuardar(){
-      // por defecto orden queda en 0 (si lo borran, lo volvemos a 0)
       if (!ordenEl.value.trim()) ordenEl.value = "0";
-
       barcodeEl.value = "";
       obsEl.value = "";
       cantidadEl.value = "1";
       setProductoValido(null,"");
     }
 
-    async function guardarMovimiento_(){
     async function guardarMovimiento(){
       const orden = ordenEl.value.trim() || "0";
       const tipo_mov = (tipoMovEl.value || "").trim().toUpperCase();
@@ -547,7 +515,6 @@
       const observacion = (obsEl.value || "").trim().toUpperCase();
 
       if (!currentProducto || currentBarcodeValid !== barcode) { btnGuardar.disabled = true; return; }
-      if (!tipo_mov || !barcode || !cantidad || Number(cantidad) <= 0) { setMsg("FALTAN DATOS", "err"); return; }
       if (!tipo_mov || !barcode || !cantidad || Number(cantidad) <= 0) { setMsg("FALTAN DATOS", true); return; }
 
       btnGuardar.disabled = true;
@@ -565,6 +532,7 @@
       };
 
       try{
+        // mode:no-cors => no podemos leer respuesta, pero alcanza para grabar
         await fetch(APPS_SCRIPT_URL, {
           method:"POST",
           mode:"no-cors",
@@ -573,20 +541,17 @@
         });
 
         showToast("✅ MOVIMIENTO INGRESADO");
-        setMsg("", "");
         setMsg("", false);
         limpiarCamposDespuesDeGuardar();
 
       }catch(e){
-        setMsg("ERROR AL ENVIAR", "err");
         setMsg("ERROR AL ENVIAR", true);
       }finally{
         btnGuardar.disabled = !currentProducto;
       }
     }
 
-    // ===== LISTA / DASH (sin cambios de lógica acá, quedan igual) =====
-    // ===== MOVIMIENTOS LIST =====
+    // ===== LISTA / DASH =====
     function fmtFecha(iso){
       try{
         const d = new Date(iso);
@@ -601,7 +566,6 @@
     }
 
     async function cargarMovimientos(){
-      setListMsg("CARGANDO...");
       setListMsg("CARGANDO...", false);
       listContainer.innerHTML = "";
 
@@ -620,10 +584,8 @@
         if (!json.ok) throw new Error(json.error || "ERROR");
 
         const items = json.items || [];
-        if (!items.length){ setListMsg("SIN RESULTADOS"); return; }
         if (!items.length){ setListMsg("SIN RESULTADOS", false); return; }
 
-        setListMsg("");
         setListMsg("", false);
         for (const it of items){
           const fecha = fmtFecha(it.timestamp);
@@ -642,12 +604,12 @@
           listContainer.appendChild(div);
         }
       }catch(e){
-        setListMsg("NO SE PUDO CARGAR", "err");
+        setListMsg("NO SE PUDO CARGAR", true);
       }
     }
 
     async function cargarDashboard(){
-      setDashMsg("CARGANDO...");
+      setDashMsg("CARGANDO...", false);
       topContainer.innerHTML = "";
       try{
         const url = `${APPS_SCRIPT_URL}?action=dashboard&secret=${encodeURIComponent(SECRET)}`;
@@ -670,10 +632,9 @@
           topContainer.appendChild(div);
         }
 
-        setDashMsg("");
+        setDashMsg("", false);
       }catch(e){
-        setDashMsg("NO SE PUDO CARGAR", "err");
-        setListMsg("NO SE PUDO CARGAR", true);
+        setDashMsg("NO SE PUDO CARGAR", true);
       }
     }
 
@@ -681,22 +642,14 @@
     btnScan.addEventListener("click", ()=> scanning ? stopScan() : startScan());
 
     ordenEl.addEventListener("input", ()=> { ordenEl.value = ordenEl.value.replace(/\D/g,""); });
-
-    // si el usuario lo borra, lo devolvemos a 0 al salir del campo
-    ordenEl.addEventListener("blur", ()=> {
-      if (!ordenEl.value.trim()) ordenEl.value = "0";
-    });
     ordenEl.addEventListener("blur", ()=> { if (!ordenEl.value.trim()) ordenEl.value = "0"; });
 
     barcodeEl.addEventListener("change", async ()=>{
       const code = barcodeEl.value.trim();
-      if (!code){ setProductoValido(null,""); setMsg(""); return; }
-      await handleValidBarcode(code);
       if (!code){ setProductoValido(null,""); setMsg("", false); return; }
       await handleBarcode(code);
     });
 
-    btnGuardar.addEventListener("click", guardarMovimiento_);
     btnGuardar.addEventListener("click", guardarMovimiento);
 
     btnVerMovs.addEventListener("click", async ()=>{
@@ -727,15 +680,11 @@
 
     btnRefrescar.addEventListener("click", cargarMovimientos);
     btnAplicarFiltros.addEventListener("click", cargarMovimientos);
-
     btnRefrescarDash.addEventListener("click", cargarDashboard);
 
     // INIT
-    // init
     ordenEl.value = "0";
     setProductoValido(null,"");
-    setMsg("");
-    cargarCatalogoSilencioso().catch(()=> setMsg("ERROR CARGANDO CATÁLOGO", "err"));
     setMsg("", false);
     cargarCatalogoSilencioso().catch(()=> setMsg("ERROR CARGANDO CATÁLOGO", true));
   </script>
