@@ -278,6 +278,10 @@
       <label>CÓDIGO DE BARRAS</label>
       <input id="add_barcode" placeholder="ESCANEÁ O ESCRIBÍ..." />
 
+      <div id="camWrapAdd" class="camWrap">
+        <video id="videoAdd" playsinline></video>
+      </div>
+
       <div id="productoAddHint" class="hint"></div>
 
       <label>SKU</label>
@@ -323,6 +327,9 @@
 
     const videoEl = document.getElementById("video");
     const camWrapEl = document.getElementById("camWrap");
+
+    const videoAddEl = document.getElementById("videoAdd");
+    const camWrapAddEl = document.getElementById("camWrapAdd");
 
     const btnScan = document.getElementById("btnScan");
     const btnGuardar = document.getElementById("btnGuardar");
@@ -809,12 +816,15 @@
     }
 
     async function startCamera(){
+      const targetVideo = (scanTarget === "ADD") ? videoAddEl : videoEl;
+    
       stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode:{ideal:"environment"}, width:{ideal:1280}, height:{ideal:720} },
         audio:false
       });
-      videoEl.srcObject = stream;
-      await videoEl.play();
+    
+      targetVideo.srcObject = stream;
+      await targetVideo.play();
     }
 
     function stopCamera(){
@@ -828,7 +838,8 @@
     async function scanLoop(){
       if (!scanning) return;
       try{
-        const barcodes = await detector.detect(videoEl);
+        const targetVideo = (scanTarget === "ADD") ? videoAddEl : videoEl;
+        const barcodes = await detector.detect(targetVideo);
         if (barcodes?.length){
           const code = (barcodes[0].rawValue || "").trim();
           if (code){
@@ -856,12 +867,14 @@
     
       try{
         await initDetector();
-        camWrapEl.style.display = "block";
+        (camWrapEl).style.display = (scanTarget === "MOV") ? "block" : "none";
+        (camWrapAddEl).style.display = (scanTarget === "ADD") ? "block" : "none";
         await startCamera();
         rafId = requestAnimationFrame(scanLoop);
       }catch(e){
         scanning=false;
         camWrapEl.style.display="none";
+        camWrapAddEl.style.display="none";
         stopCamera();
     
         btnScan.textContent = "📷 ESCANEAR";
@@ -876,6 +889,7 @@
       scanning=false;
       stopCamera();
       camWrapEl.style.display="none";
+      camWrapAddEl.style.display="none";
     
       btnScan.textContent = "📷 ESCANEAR";
       btnScanAdd.textContent = "📷 ESCANEAR";
@@ -951,6 +965,7 @@
   </script>
 </body>
 </html>
+
 
 
 
