@@ -70,6 +70,7 @@
     .msg.err{color:var(--danger);font-weight:900}
     .msg.ok{color:var(--ok);font-weight:900}
 
+    /* botones en bloque */
     .topActions{display:flex;gap:10px;margin-top:12px}
     .topActions button{flex:1}
 
@@ -88,31 +89,7 @@
 
     ::placeholder{color:rgba(11,45,92,.45)}
 
-    /* ===== TOAST VERDE ===== */
-    .toast{
-      position:fixed;
-      left:50%;
-      bottom:18px;
-      transform:translateX(-50%);
-      background:linear-gradient(135deg, rgba(15,122,58,0.98), rgba(18,150,76,0.98));
-      color:#fff;
-      padding:12px 14px;
-      border-radius:14px;
-      box-shadow:0 14px 34px rgba(0,0,0,.18);
-      font-weight:900;
-      letter-spacing:.5px;
-      display:none;
-      z-index:9999;
-      max-width:92vw;
-      text-align:center;
-    }
-    .toast.show{display:block; animation:toastIn .22s ease;}
-    @keyframes toastIn{
-      from{opacity:0; transform:translateX(-50%) translateY(8px)}
-      to{opacity:1; transform:translateX(-50%) translateY(0)}
-    }
-
-    /* ===== POPUP BUSCANDO ===== */
+    /* ===== POPUP BUSY (BUSCANDO / GUARDANDO) ===== */
     .busyModal{
       position:fixed;
       inset:0;
@@ -161,6 +138,12 @@
 
     <!-- SCREEN: FORM -->
     <div id="screenForm" class="card">
+
+      <!-- ✅ MOVIMIENTOS ARRIBA (en bloque) -->
+      <div class="topActions" style="margin-top:0;">
+        <button id="btnVerMovs" type="button" class="btn-secondary">📄 MOVIMIENTOS</button>
+      </div>
+
       <button id="btnScan" type="button" class="btn-secondary">📷 ESCANEAR</button>
 
       <label>CÓDIGO DE BARRAS</label>
@@ -171,10 +154,6 @@
       </div>
 
       <div id="producto" class="hint"></div>
-
-      <div class="topActions">
-        <button id="btnVerMovs" type="button" class="btn-secondary">📄 MOVIMIENTOS</button>
-      </div>
 
       <label>ORDEN (SOLO NÚMEROS)</label>
       <input id="orden" inputmode="numeric" pattern="[0-9]*" placeholder="EJ: 0" value="0" />
@@ -227,7 +206,7 @@
     </div>
   </div>
 
-  <!-- POPUP BUSCANDO -->
+  <!-- POPUP (BUSCANDO / GUARDANDO / OK / ERROR) -->
   <div id="busyModal" class="busyModal">
     <div class="busyBox">
       <div class="busySpinner"></div>
@@ -235,17 +214,13 @@
     </div>
   </div>
 
-  <!-- TOAST -->
-  <div id="toast" class="toast">GUARDADO</div>
-
   <script>
     // ===== CONFIG =====
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEbDR4Ns1BhfUXEsztkNWTYnQuC_saqwYxA2nCgTJsN7cXG8d9OZY7IpI87msULkIc/exec"; // <-- PEGÁ TU /exec
+    const APPS_SCRIPT_URL = "PEGA_AQUI_TU_EXEC"; // <-- PEGÁ TU /exec
     const SECRET = "PUBLI_2026_Stock!";
     const REQUIRED_SAME_READS = 2;
 
     // ===== DOM =====
-    const toastEl = document.getElementById("toast");
     const busyModalEl = document.getElementById("busyModal");
     const busyTextEl = document.getElementById("busyText");
 
@@ -293,12 +268,22 @@
     let lastCode = "";
     let sameCount = 0;
 
-    function showBusy(text="BUSCANDO PRODUCTO..."){
+    // popup mínimo visible
+    let busyShownAt = 0;
+    const BUSY_MIN_MS = 250;
+
+    function showBusy(text="PROCESANDO..."){
+      busyShownAt = Date.now();
       busyTextEl.textContent = (text||"").toString().toUpperCase();
       busyModalEl.style.display = "flex";
     }
     function hideBusy(){
-      busyModalEl.style.display = "none";
+      const elapsed = Date.now() - busyShownAt;
+      const wait = Math.max(0, BUSY_MIN_MS - elapsed);
+      setTimeout(()=> { busyModalEl.style.display = "none"; }, wait);
+    }
+    function setBusyText(text=""){
+      busyTextEl.textContent = (text||"").toString().toUpperCase();
     }
 
     function setMsg(t="", err=false){
@@ -308,13 +293,6 @@
     function setListMsg(t="", err=false){
       listMsgEl.className = "msg" + (err ? " err" : "");
       listMsgEl.textContent = (t||"").toString().toUpperCase();
-    }
-
-    function showToast(text){
-      toastEl.textContent = (text||"").toString().toUpperCase();
-      toastEl.classList.add("show");
-      navigator.vibrate?.(90);
-      setTimeout(()=> toastEl.classList.remove("show"), 1400);
     }
 
     function setProducto(producto, barcode, stock){
@@ -356,13 +334,16 @@
 
       barcodeEl.value = clean;
 
-      // cache navegador 15s
+      // cache navegador 15s (igual mostramos popup corto para feedback)
       const hit = memLookup.get(clean);
       if (hit && (Date.now() - hit.t) < 15000){
+        showBusy("BUSCANDO PRODUCTO...");
         setProducto({ sku: hit.sku, descripcion: hit.descripcion }, clean, hit.stock);
         setMsg("", false);
         cantidadEl.focus();
         cantidadEl.select?.();
+        setBusyText("✅ ENCONTRADO");
+        setTimeout(()=> hideBusy(), 250);
         return;
       }
 
@@ -381,11 +362,15 @@
         setMsg("", false);
         cantidadEl.focus();
         cantidadEl.select?.();
+
+        setBusyText("✅ ENCONTRADO");
+        setTimeout(()=> hideBusy(), 250);
       }catch(e){
         setProducto(null,"",null);
         setMsg(String(e.message || e).toUpperCase(), true);
-      }finally{
-        hideBusy();
+
+        setBusyText("❌ NO SE PUDO");
+        setTimeout(()=> hideBusy(), 650);
       }
     }
 
@@ -493,6 +478,8 @@
       };
 
       try{
+        showBusy("GUARDANDO MOVIMIENTO...");
+
         await fetch(APPS_SCRIPT_URL, {
           method:"POST",
           mode:"no-cors",
@@ -500,20 +487,17 @@
           body: JSON.stringify(data)
         });
 
-        // actualizo cache local: si fue entrada/salida, ajusto stock mostrado
-        const delta = Number(cantidad) * (tipo_mov === "ENTRADA" ? 1 : (tipo_mov === "SALIDA" ? -1 : 0));
-        if (delta !== 0 && typeof currentStock === "number"){
-          currentStock = currentStock + delta;
-        }
-
-        // invalido cache de barcode por 15s (para que el próximo lookup no muestre stock viejo)
+        // invalida cache local de ese barcode para que no muestre stock viejo
         memLookup.delete(barcode);
 
-        showToast("✅ MOVIMIENTO INGRESADO");
+        setBusyText("✅ GUARDADO");
+        setTimeout(()=> hideBusy(), 450);
+
         setMsg("", false);
         limpiarCampos();
-
       }catch(e){
+        setBusyText("❌ ERROR AL GUARDAR");
+        setTimeout(()=> hideBusy(), 700);
         setMsg("ERROR AL ENVIAR", true);
       }finally{
         btnGuardar.disabled = !currentProducto;
