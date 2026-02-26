@@ -72,6 +72,7 @@
     .topActions{display:flex;gap:10px;margin-top:12px}
     .topActions button{flex:1}
 
+    /* NAV: BLOQUES INDEPENDIENTES */
     .navBlocks{display:flex;flex-direction:column;gap:10px;margin-top:0;}
     .navBlocks button{margin-top:0;width:100%;}
 
@@ -91,10 +92,28 @@
 
     .liTop{display:flex;justify-content:space-between;gap:10px;font-weight:900}
     .liSub{margin-top:6px;color:var(--muted);font-weight:800;font-size:12px;line-height:1.35}
-    .liStock{margin-top:6px;font-weight:900;font-size:12px;color:var(--danger);letter-spacing:.4px;}
+
+    /* PRODUCTOS: NUEVO LAYOUT */
+    .prodItem{
+      display:grid;
+      grid-template-columns: 1fr 110px;
+      gap:10px;
+      align-items:center;
+    }
+    .prodLeft .skuLine{font-weight:900;letter-spacing:.4px;}
+    .prodLeft .descLine{margin-top:6px;color:var(--muted);font-weight:900;font-size:12px;line-height:1.25}
+    .prodLeft .codeLine{margin-top:6px;color:rgba(11,45,92,.78);font-weight:900;font-size:12px;letter-spacing:.4px}
+    .prodRight{
+      text-align:right;
+      border-left:1px solid rgba(11,45,92,.12);
+      padding-left:10px;
+    }
+    .prodRight .stkLbl{font-weight:900;font-size:12px;letter-spacing:.6px;color:rgba(176,0,32,.85)}
+    .prodRight .stkNum{margin-top:4px;font-weight:900;font-size:22px;letter-spacing:.6px;color:var(--danger)}
 
     ::placeholder{color:rgba(11,45,92,.45)}
 
+    /* ===== POPUP BUSY ===== */
     .busyModal{
       position:fixed;
       inset:0;
@@ -327,7 +346,7 @@
 
   <script>
     // ===== CONFIG =====
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwTBNq8JFmUIRQalBm8U-AtGaYF9wjyUVYysfUVUSFlYarlSVbexYPaURqbewaBwqgO/exec"; // <-- TU /exec
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwTBNq8JFmUIRQalBm8U-AtGaYF9wjyUVYysfUVUSFlYarlSVbexYPaURqbewaBwqgO/exec";
     const SECRET = "PUBLI_2026_Stock!";
     const REQUIRED_SAME_READS = 2;
 
@@ -392,11 +411,11 @@
     const prodContainer = document.getElementById("prodContainer");
 
     // ===== STATE =====
-    let currentProducto = null;   // { sku, descripcion }
+    let currentProducto = null;
     let currentBarcode = "";
-    let currentStock = null;      // number
+    let currentStock = null;
 
-    const memLookup = new Map(); // barcode -> {sku, descripcion, stock, t}
+    const memLookup = new Map();
 
     // scanner
     let stream = null;
@@ -405,14 +424,14 @@
     let rafId = null;
     let lastCode = "";
     let sameCount = 0;
-    let scanTarget = "MOV"; // "MOV" | "ADD"
+    let scanTarget = "MOV";
 
     // popup mínimo visible
     let busyShownAt = 0;
     const BUSY_MIN_MS = 250;
 
     // catálogo cache
-    let catalogCache = []; // [{barcode, sku, descripcion, stock}]
+    let catalogCache = [];
 
     function resetBusyStyle(){ busyBoxEl.classList.remove("success","error"); }
     function popBusy(){
@@ -474,13 +493,8 @@
       cantidadEl.classList.remove("adjustMode");
       btnGuardar.textContent = "✅ GUARDAR";
     }
-
     function resetOrden_(){ ordenEl.value = "0"; }
-
-    function resetFormAfterAction_(){
-      resetOrden_();
-      resetTipoYcantidadUI_();
-    }
+    function resetFormAfterAction_(){ resetOrden_(); resetTipoYcantidadUI_(); }
 
     function setProducto(producto, barcode, stock){
       currentProducto = producto || null;
@@ -510,18 +524,9 @@
       if (!j.ok) throw new Error(j.error || "ERROR");
       return j;
     }
-
-    async function fetchLookup(barcode){
-      return await apiGet_({ action:"lookup", secret:SECRET, barcode });
-    }
-
-    async function catFind(barcode){
-      return await apiGet_({ action:"catfind", secret:SECRET, barcode });
-    }
-
-    async function fetchCatalog_(){
-      return await apiGet_({ action:"catalog", secret:SECRET });
-    }
+    async function fetchLookup(barcode){ return await apiGet_({ action:"lookup", secret:SECRET, barcode }); }
+    async function catFind(barcode){ return await apiGet_({ action:"catfind", secret:SECRET, barcode }); }
+    async function fetchCatalog_(){ return await apiGet_({ action:"catalog", secret:SECRET }); }
 
     async function handleBarcode_MOV(code){
       const clean = String(code||"").trim();
@@ -699,7 +704,6 @@
           body: JSON.stringify(data)
         });
 
-        // limpiar cache lookup y catálogo (stock cambió)
         memLookup.delete(barcode);
         catalogCache = [];
 
@@ -740,14 +744,15 @@
     }
 
     async function cargarMovimientos(){
-      setListMsg("CARGANDO...", false);
       listContainer.innerHTML = "";
+      setListMsg("", false);
 
       const tipo = (fTipo.value || "").trim();
       const q = (fQ.value || "").trim();
       const from = (fFrom.value || "").trim();
       const to = (fTo.value || "").trim();
 
+      showBusy("CARGANDO MOVIMIENTOS...");
       try{
         const j = await apiGet_({
           action:"list",
@@ -760,9 +765,13 @@
         });
 
         const items = j.items || [];
-        if (!items.length){ setListMsg("SIN RESULTADOS", false); return; }
+        if (!items.length){
+          setBusySuccess("✅ LISTO");
+          setTimeout(()=> hideBusy(), 320);
+          setListMsg("SIN RESULTADOS", false);
+          return;
+        }
 
-        setListMsg("", false);
         for (const it of items){
           const fecha = fmtFecha(it.timestamp);
           let tipoMov = String(it.tipo_mov||"");
@@ -782,7 +791,12 @@
           `;
           listContainer.appendChild(div);
         }
+
+        setBusySuccess("✅ LISTO");
+        setTimeout(()=> hideBusy(), 320);
       }catch(e){
+        setBusyError("❌ NO SE PUDO");
+        setTimeout(()=> hideBusy(), 650);
         setListMsg(("NO SE PUDO CARGAR: " + (e.message||e)), true);
       }
     }
@@ -831,8 +845,6 @@
 
         setAddMsg("", false);
         clearAddForm_();
-
-        // refrescar cache de catálogo
         catalogCache = [];
       }catch(e){
         setBusyError("❌ ERROR");
@@ -861,22 +873,36 @@
         const div = document.createElement("div");
         div.className = "listItem";
         div.innerHTML = `
-          <div class="liTop"><div>${sku || "-"}</div><div>${bc || "-"}</div></div>
-          <div class="liStock">STOCK: ${stock}</div>
-          <div class="liSub">${desc || "-"}</div>
+          <div class="prodItem">
+            <div class="prodLeft">
+              <div class="skuLine">SKU: ${sku || "-"}</div>
+              <div class="descLine">${desc || "-"}</div>
+              <div class="codeLine">CÓDIGO: ${bc || "-"}</div>
+            </div>
+            <div class="prodRight">
+              <div class="stkLbl">STOCK:</div>
+              <div class="stkNum">${stock}</div>
+            </div>
+          </div>
         `;
         prodContainer.appendChild(div);
       }
     }
 
     async function cargarCatalogoPantalla_(){
-      setProdMsg("CARGANDO...", false);
       prodContainer.innerHTML = "";
+      setProdMsg("", false);
+
+      showBusy("CARGANDO PRODUCTOS...");
       try{
         const j = await fetchCatalog_();
         catalogCache = (j.items || []).slice();
         renderCatalog_(catalogCache);
+        setBusySuccess("✅ LISTO");
+        setTimeout(()=> hideBusy(), 320);
       }catch(e){
+        setBusyError("❌ NO SE PUDO");
+        setTimeout(()=> hideBusy(), 650);
         setProdMsg("NO SE PUDO CARGAR: " + (e.message||e), true);
       }
     }
@@ -993,6 +1019,7 @@
       btnScanAdd.textContent = "🛑 DETENER";
     }
 
+    // ===== EVENTS =====
     btnScan.addEventListener("click", ()=> toggleScan("MOV"));
     btnScanAdd.addEventListener("click", ()=> toggleScan("ADD"));
 
@@ -1012,8 +1039,11 @@
       screenAdd.style.display="none";
       screenProductos.style.display="none";
       screenList.style.display="block";
-      await cargarMovimientos();
+      await cargarMovimientos(); // popup incluido
     });
+
+    btnRefrescar.addEventListener("click", cargarMovimientos);
+    btnAplicarFiltros.addEventListener("click", cargarMovimientos);
 
     btnAddProd.addEventListener("click", ()=>{
       stopScan();
@@ -1025,15 +1055,6 @@
       scanTarget = "ADD";
     });
 
-    btnProductos.addEventListener("click", async ()=>{
-      stopScan();
-      screenForm.style.display="none";
-      screenList.style.display="none";
-      screenAdd.style.display="none";
-      screenProductos.style.display="block";
-      await cargarCatalogoPantalla_();
-    });
-
     btnBackAdd.addEventListener("click", ()=>{
       stopScan();
       screenAdd.style.display="none";
@@ -1042,6 +1063,19 @@
       screenForm.style.display="block";
       scanTarget = "MOV";
     });
+
+    btnProductos.addEventListener("click", async ()=>{
+      stopScan();
+      screenForm.style.display="none";
+      screenList.style.display="none";
+      screenAdd.style.display="none";
+      screenProductos.style.display="block";
+      await cargarCatalogoPantalla_(); // popup incluido
+    });
+
+    btnRefrescarProd.addEventListener("click", cargarCatalogoPantalla_);
+    btnBuscarProd.addEventListener("click", filtrarCatalogo_);
+    pQEl.addEventListener("keydown", (e)=>{ if (e.key === "Enter") filtrarCatalogo_(); });
 
     btnVolver.addEventListener("click", ()=>{
       stopScan();
@@ -1061,20 +1095,14 @@
       scanTarget = "MOV";
     });
 
-    btnRefrescar.addEventListener("click", cargarMovimientos);
-    btnAplicarFiltros.addEventListener("click", cargarMovimientos);
-
     btnGuardarProd.addEventListener("click", guardarProducto_);
-
-    btnRefrescarProd.addEventListener("click", cargarCatalogoPantalla_);
-    btnBuscarProd.addEventListener("click", filtrarCatalogo_);
-    pQEl.addEventListener("keydown", (e)=>{ if (e.key === "Enter") filtrarCatalogo_(); });
 
     // INIT
     ordenEl.value = "0";
     setProducto(null,"",null);
     resetTipoYcantidadUI_();
     setMsg("", false);
+    setListMsg("", false);
     setProdMsg("", false);
   </script>
 </body>
