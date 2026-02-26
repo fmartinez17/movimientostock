@@ -20,7 +20,6 @@
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);font-family:Arial,sans-serif;color:var(--text);text-transform:uppercase}
     .wrap{max-width:560px;margin:0 auto;padding:16px}
-
     .header{
       background:linear-gradient(135deg,var(--brand),var(--brand2));
       color:#fff;border-radius:var(--radius);
@@ -29,12 +28,10 @@
     }
     .brandTitle{font-weight:900;letter-spacing:.6px;font-size:18px;line-height:1.1}
     .brandSub{font-size:12px;opacity:.92;margin-top:4px;letter-spacing:.4px}
-
     .card{
       margin-top:14px;background:var(--card);border-radius:var(--radius);padding:14px;
       box-shadow:var(--shadow);border:1px solid rgba(11,45,92,.08)
     }
-
     label{display:block;margin-top:12px;font-weight:900;font-size:12px;letter-spacing:.4px;color:var(--muted)}
     input,select,textarea,button{
       width:100%;padding:12px;margin-top:6px;border-radius:12px;border:2px solid var(--border);
@@ -42,7 +39,6 @@
     }
     input:focus,select:focus,textarea:focus{border-color:rgba(21,75,154,.65);box-shadow:0 0 0 3px rgba(21,75,154,.12)}
     textarea{min-height:76px;resize:vertical}
-
     .btn{
       border:none;font-weight:900;letter-spacing:.7px;cursor:pointer;
       background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;
@@ -52,26 +48,23 @@
       background:#fff;color:var(--brand);border:2px solid var(--border);box-shadow:none;font-weight:900
     }
     .btn[disabled]{opacity:.45;cursor:not-allowed;box-shadow:none}
-
     .camWrap{
       display:none;margin-top:12px;border-radius:var(--radius);overflow:hidden;
       border:2px solid var(--border);background:#000
     }
     video{width:100%;height:320px;object-fit:cover;display:block;background:#000}
-
+    #scannerQuagga{width:100%;height:320px;background:#000}
     .hint{
       display:none;margin-top:10px;padding:10px 12px;border-radius:12px;
       background:rgba(11,45,92,.06);border:1px solid rgba(11,45,92,.10);
       font-weight:900
     }
     .hint .line2{margin-top:6px;color:var(--muted);font-size:12px;font-weight:900}
-
     .msg{margin-top:10px;font-size:13px;color:var(--muted);min-height:18px;letter-spacing:.3px}
     .msg.err{color:var(--danger);font-weight:900}
 
     .filterRow{display:flex;gap:10px;margin-top:12px}
     .filterRow > *{flex:1}
-
     .listItem{
       border:1px solid rgba(11,45,92,.10);
       background:rgba(11,45,92,.03);
@@ -81,26 +74,14 @@
     }
     .liTop{display:flex;justify-content:space-between;gap:10px;font-weight:900}
     .liSub{margin-top:6px;color:var(--muted);font-weight:800;font-size:12px;line-height:1.35}
-
     ::placeholder{color:rgba(11,45,92,.45)}
 
-    /* TOAST VERDE */
     .toast{
-      position:fixed;
-      left:50%;
-      bottom:18px;
-      transform:translateX(-50%);
+      position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
       background:linear-gradient(135deg, rgba(15,122,58,0.98), rgba(18,150,76,0.98));
-      color:#fff;
-      padding:12px 14px;
-      border-radius:14px;
+      color:#fff;padding:12px 14px;border-radius:14px;
       box-shadow:0 14px 34px rgba(0,0,0,.18);
-      font-weight:900;
-      letter-spacing:.5px;
-      display:none;
-      z-index:9999;
-      max-width:92vw;
-      text-align:center;
+      font-weight:900;letter-spacing:.5px;display:none;z-index:9999;max-width:92vw;text-align:center;
     }
     .toast.show{display:block; animation:toastIn .22s ease;}
     @keyframes toastIn{
@@ -120,12 +101,9 @@
       <div style="font-weight:900;opacity:.95;font-size:12px;letter-spacing:.5px;">STOCK</div>
     </div>
 
-    <!-- SCREEN: FORM -->
+    <!-- FORM -->
     <div id="screenForm" class="card">
-
-      <!-- ✅ MOVIMIENTOS ARRIBA -->
       <button id="btnVerMovs" type="button" class="btn-secondary">📄 MOVIMIENTOS</button>
-
       <button id="btnScan" type="button" class="btn-secondary">📷 ESCANEAR</button>
 
       <label>CÓDIGO DE BARRAS</label>
@@ -133,6 +111,7 @@
 
       <div id="camWrap" class="camWrap">
         <video id="video" playsinline></video>
+        <div id="scannerQuagga" style="display:none;"></div>
       </div>
 
       <div id="producto" class="hint"></div>
@@ -145,7 +124,6 @@
         <option value="" selected disabled>INGRESE TIPO DE MOVIMIENTO</option>
         <option value="SALIDA">SALIDA</option>
         <option value="ENTRADA">ENTRADA</option>
-        <option value="AJUSTE">AJUSTE</option>
       </select>
 
       <label>CANTIDAD</label>
@@ -155,11 +133,10 @@
       <textarea id="observacion" placeholder="NOTAS..."></textarea>
 
       <button id="btnGuardar" type="button" class="btn" disabled>✅ GUARDAR</button>
-
       <div id="msg" class="msg"></div>
     </div>
 
-    <!-- SCREEN: MOVIMIENTOS -->
+    <!-- LIST -->
     <div id="screenList" class="card" style="display:none;">
       <div style="display:flex;gap:10px;">
         <button id="btnVolver" type="button" class="btn-secondary" style="flex:1;">⬅️ VOLVER</button>
@@ -171,7 +148,6 @@
           <option value="" selected>TODOS</option>
           <option value="ENTRADA">ENTRADA</option>
           <option value="SALIDA">SALIDA</option>
-          <option value="AJUSTE">AJUSTE</option>
         </select>
         <input id="fQ" placeholder="BUSCAR (SKU / PROD / OBS)" />
       </div>
@@ -182,7 +158,6 @@
       </div>
 
       <button id="btnAplicarFiltros" type="button" class="btn-secondary">APLICAR FILTROS</button>
-
       <div id="listMsg" class="msg"></div>
       <div id="listContainer"></div>
     </div>
@@ -190,13 +165,18 @@
 
   <div id="toast" class="toast">GUARDADO</div>
 
+  <!-- Quagga2 fallback -->
+  <script src="https://unpkg.com/@ericblade/quagga2/dist/quagga.min.js"></script>
+
   <script>
     // ===== CONFIG =====
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8UHiav_LdmlUBVBEfklz88n1FkZZIdCU34Ypy_ZZYh6d6YaBnPmrKPYcfMCnX78sr/exec";
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby1ZaUCkngzSNoLtKBft9pr38BjhYgSAGefV0fkey-ahmmcAtxXc4sZAlW2WjlEoQ4U/exec";
     const SECRET = "PUBLI_2026_Stock!";
     const SPREADSHEET_ID = "1xdyknuy-wQID0VHMCEuvYc4fz0ljZTGfL7ek7U_M1wE";
     const CATALOG_SHEET_NAME = "catalogo";
-    const REQUIRED_SAME_READS = 2;
+
+    const REQUIRED_SAME_READS = 2; // estabilidad BD
+    const BD_TIMEOUT_MS = 2200;    // si no lee, fallback quagga
 
     // ===== DOM =====
     const toastEl = document.getElementById("toast");
@@ -205,6 +185,8 @@
 
     const videoEl = document.getElementById("video");
     const camWrapEl = document.getElementById("camWrap");
+    const scannerQuaggaEl = document.getElementById("scannerQuagga");
+
     const btnScan = document.getElementById("btnScan");
     const btnGuardar = document.getElementById("btnGuardar");
     const btnVerMovs = document.getElementById("btnVerMovs");
@@ -232,12 +214,18 @@
     let catalogoMap = {};
     let currentProducto = null;
     let currentBarcodeValid = "";
+
+    // BarcodeDetector
     let stream = null;
     let detector = null;
     let scanning = false;
     let rafId = null;
     let lastCode = "";
     let sameCount = 0;
+    let bdTimeoutId = null;
+
+    // Quagga
+    let quaggaRunning = false;
 
     function setMsg(t="", err=false){
       msgEl.className = "msg" + (err ? " err" : "");
@@ -299,7 +287,6 @@
       return p ? { ok:true, producto:p } : { ok:false, producto:null };
     }
 
-    // ✅ STOCK REAL CALCULADO EN BACKEND DESDE "MOVIMIENTOS"
     async function fetchStock(sku){
       try{
         const url = `${APPS_SCRIPT_URL}?action=stock&secret=${encodeURIComponent(SECRET)}&sku=${encodeURIComponent(sku)}`;
@@ -310,29 +297,6 @@
       }catch{
         return null;
       }
-    }
-
-    async function initDetector(){
-      if (!("BarcodeDetector" in window)) throw new Error("BARCODEDETECTOR NO DISPONIBLE");
-      const formats = await BarcodeDetector.getSupportedFormats();
-      detector = new BarcodeDetector({ formats });
-    }
-
-    async function startCamera(){
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode:{ideal:"environment"}, width:{ideal:1280}, height:{ideal:720} },
-        audio:false
-      });
-      videoEl.srcObject = stream;
-      await videoEl.play();
-    }
-
-    function stopCamera(){
-      if (rafId) cancelAnimationFrame(rafId);
-      rafId = null;
-      if (stream) stream.getTracks().forEach(t=>t.stop());
-      stream = null;
-      videoEl.srcObject = null;
     }
 
     async function handleBarcode(code){
@@ -347,8 +311,33 @@
 
       setProductoValido(v.producto, code, null);
       const stock = await fetchStock(v.producto.sku);
-      setProductoValido(v.producto, code, (typeof stock === "number") ? stock : null);
+      setProductoValido(v.producto, code, (typeof stock === "number") ? stock : 0);
       setMsg("", false);
+    }
+
+    // ===== CAMERA / BARCODEDETECTOR =====
+    async function initDetector(){
+      if (!("BarcodeDetector" in window)) throw new Error("BARCODEDETECTOR NO DISPONIBLE");
+      const formats = await BarcodeDetector.getSupportedFormats();
+      detector = new BarcodeDetector({ formats });
+    }
+    async function startCamera(){
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode:{ideal:"environment"}, width:{ideal:1920}, height:{ideal:1080} },
+        audio:false
+      });
+      videoEl.srcObject = stream;
+      await videoEl.play();
+    }
+    function stopCamera(){
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = null;
+      if (bdTimeoutId) clearTimeout(bdTimeoutId);
+      bdTimeoutId = null;
+
+      if (stream) stream.getTracks().forEach(t=>t.stop());
+      stream = null;
+      videoEl.srcObject = null;
     }
 
     async function scanLoop(){
@@ -360,9 +349,8 @@
           if (code){
             if (code === lastCode) sameCount++;
             else { lastCode=code; sameCount=1; }
-
             if (sameCount >= REQUIRED_SAME_READS){
-              stopScan();
+              await stopScan();
               await handleBarcode(code);
               return;
             }
@@ -372,30 +360,103 @@
       rafId = requestAnimationFrame(scanLoop);
     }
 
+    // ===== QUAGGA FALLBACK =====
+    function startQuagga(){
+      if (quaggaRunning) return;
+      quaggaRunning = true;
+
+      scannerQuaggaEl.style.display = "block";
+      videoEl.style.display = "none";
+
+      Quagga.init({
+        inputStream: {
+          type: "LiveStream",
+          target: scannerQuaggaEl,
+          constraints: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }
+        },
+        decoder: {
+          readers: [
+            "code_128_reader",
+            "code_39_reader",
+            "ean_reader",
+            "ean_8_reader",
+            "upc_reader",
+            "upc_e_reader"
+          ]
+        },
+        locate: true
+      }, (err) => {
+        if (err) {
+          quaggaRunning = false;
+          scannerQuaggaEl.style.display = "none";
+          videoEl.style.display = "block";
+          setMsg("ERROR QUAGGA", true);
+          return;
+        }
+        Quagga.start();
+      });
+
+      try { Quagga.offDetected(onQuaggaDetected); } catch(e){}
+      Quagga.onDetected(onQuaggaDetected);
+    }
+
+    async function onQuaggaDetected(result){
+      const code = result?.codeResult?.code ? String(result.codeResult.code).trim() : "";
+      if (!code) return;
+      await stopScan();
+      await handleBarcode(code);
+    }
+
+    function stopQuagga(){
+      if (!quaggaRunning) return;
+      try { Quagga.offDetected(onQuaggaDetected); } catch(e){}
+      try { Quagga.stop(); } catch(e){}
+      quaggaRunning = false;
+      scannerQuaggaEl.style.display = "none";
+      videoEl.style.display = "block";
+      scannerQuaggaEl.innerHTML = "";
+    }
+
     async function startScan(){
       if (scanning) return;
       scanning = true;
       btnScan.textContent = "🛑 DETENER";
+      setMsg("", false);
+
       lastCode=""; sameCount=0;
+
+      camWrapEl.style.display = "block";
+      videoEl.style.display = "block";
+      scannerQuaggaEl.style.display = "none";
 
       try{
         await initDetector();
-        camWrapEl.style.display = "block";
         await startCamera();
         rafId = requestAnimationFrame(scanLoop);
+
+        // si BarcodeDetector no lee rápido, pasamos a Quagga2
+        bdTimeoutId = setTimeout(() => {
+          if (!scanning) return;
+          // si no detectó nada, fallback
+          stopCamera();
+          startQuagga();
+        }, BD_TIMEOUT_MS);
+
       }catch(e){
         scanning=false;
         btnScan.textContent="📷 ESCANEAR";
         camWrapEl.style.display="none";
         stopCamera();
+        stopQuagga();
         setMsg("ERROR DE CÁMARA / PERMISOS", true);
       }
     }
 
-    function stopScan(){
+    async function stopScan(){
       scanning=false;
       btnScan.textContent="📷 ESCANEAR";
       stopCamera();
+      stopQuagga();
       camWrapEl.style.display="none";
     }
 
@@ -450,7 +511,7 @@
       }
     }
 
-    // ===== MOVIMIENTOS LIST =====
+    // ===== LIST =====
     function fmtFecha(iso){
       try{
         const d = new Date(iso);
