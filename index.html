@@ -68,7 +68,6 @@
 
     .msg{margin-top:10px;font-size:13px;color:var(--muted);min-height:18px;letter-spacing:.3px}
     .msg.err{color:var(--danger);font-weight:900}
-    .msg.ok{color:var(--ok);font-weight:900}
 
     /* botones en bloque */
     .topActions{display:flex;gap:10px;margin-top:12px}
@@ -89,7 +88,7 @@
 
     ::placeholder{color:rgba(11,45,92,.45)}
 
-    /* ===== POPUP BUSY (BUSCANDO / GUARDANDO / OK / ERROR) ===== */
+    /* ===== POPUP BUSY ===== */
     .busyModal{
       position:fixed;
       inset:0;
@@ -163,7 +162,6 @@
     @keyframes drawCircle{ to{stroke-dashoffset:0} }
     @keyframes drawCheck{ to{stroke-dashoffset:0} }
 
-    /* ===== ESTADO SUCCESS (VERDE) ===== */
     .busyBox.success{
       background:linear-gradient(135deg,#0F7A3A,#1BB15F);
       border-color:#0F7A3A;
@@ -173,7 +171,6 @@
     .busyBox.success .busySpinner{ display:none; }
     .busyBox.success .busyCheck{ display:block; }
 
-    /* ===== ESTADO ERROR (ROJO) ===== */
     .busyBox.error{
       background:linear-gradient(135deg,#B00020,#E0354F);
       border-color:#B00020;
@@ -182,7 +179,6 @@
     .busyBox.error .busyText{ color:#fff; }
     .busyBox.error .busySpinner{ display:none; }
 
-    /* UX: cuando es AJUSTE, resaltamos el input cantidad */
     .adjustMode{
       border-color: rgba(15,122,58,.55) !important;
       box-shadow:0 0 0 3px rgba(15,122,58,.12) !important;
@@ -203,7 +199,6 @@
     <!-- SCREEN: FORM -->
     <div id="screenForm" class="card">
 
-      <!-- MOVIMIENTOS ARRIBA (en bloque) -->
       <div class="topActions" style="margin-top:0;">
         <button id="btnVerMovs" type="button" class="btn-secondary">📄 MOVIMIENTOS</button>
       </div>
@@ -231,7 +226,7 @@
       </select>
 
       <label id="lblCantidad">CANTIDAD</label>
-      <input id="cantidad" type="number" min="0" step="1" placeholder="INGRESE CANTIDAD" value="1" />
+      <input id="cantidad" type="number" min="0" step="1" placeholder="INGRESE SU CANTIDAD" value="" />
 
       <label>OBSERVACIÓN (OPCIONAL)</label>
       <textarea id="observacion" placeholder="NOTAS..."></textarea>
@@ -253,7 +248,6 @@
           <option value="" selected>TODOS</option>
           <option value="ENTRADA">ENTRADA</option>
           <option value="SALIDA">SALIDA</option>
-          <!-- Nota: AJUSTE no se guarda como tal; queda auditado en OBS -->
         </select>
         <input id="fQ" placeholder="BUSCAR (SKU / PROD / OBS)" />
       </div>
@@ -287,12 +281,10 @@
   </div>
 
   <script>
-    // ===== CONFIG =====
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEbDR4Ns1BhfUXEsztkNWTYnQuC_saqwYxA2nCgTJsN7cXG8d9OZY7IpI87msULkIc/exec"; // <-- PEGÁ TU /exec
+    const APPS_SCRIPT_URL = "PEGA_AQUI_TU_EXEC";
     const SECRET = "PUBLI_2026_Stock!";
     const REQUIRED_SAME_READS = 2;
 
-    // ===== DOM =====
     const busyModalEl = document.getElementById("busyModal");
     const busyBoxEl = document.getElementById("busyBox");
     const busyTextEl = document.getElementById("busyText");
@@ -315,7 +307,6 @@
     const productoEl = document.getElementById("producto");
     const msgEl = document.getElementById("msg");
 
-    // list
     const btnVolver = document.getElementById("btnVolver");
     const btnRefrescar = document.getElementById("btnRefrescar");
     const btnAplicarFiltros = document.getElementById("btnAplicarFiltros");
@@ -326,15 +317,12 @@
     const listMsgEl = document.getElementById("listMsg");
     const listContainer = document.getElementById("listContainer");
 
-    // ===== STATE =====
-    let currentProducto = null;   // { sku, descripcion }
+    let currentProducto = null;
     let currentBarcode = "";
-    let currentStock = null;      // number
+    let currentStock = null;
 
-    // cache navegador (instantáneo al repetir)
-    const memLookup = new Map(); // barcode -> {sku, descripcion, stock, t}
+    const memLookup = new Map();
 
-    // scanner
     let stream = null;
     let detector = null;
     let scanning = false;
@@ -342,13 +330,10 @@
     let lastCode = "";
     let sameCount = 0;
 
-    // popup mínimo visible
     let busyShownAt = 0;
     const BUSY_MIN_MS = 250;
 
-    function resetBusyStyle(){
-      busyBoxEl.classList.remove("success","error");
-    }
+    function resetBusyStyle(){ busyBoxEl.classList.remove("success","error"); }
     function popBusy(){
       busyBoxEl.classList.remove("pop");
       void busyBoxEl.offsetWidth;
@@ -369,9 +354,7 @@
         resetBusyStyle();
       }, wait);
     }
-    function setBusyText(text=""){
-      busyTextEl.textContent = (text||"").toString().toUpperCase();
-    }
+    function setBusyText(text=""){ busyTextEl.textContent = (text||"").toString().toUpperCase(); }
     function setBusySuccess(text="✅ OK"){
       busyBoxEl.classList.add("success");
       setBusyText(text);
@@ -392,6 +375,18 @@
     function setListMsg(t="", err=false){
       listMsgEl.className = "msg" + (err ? " err" : "");
       listMsgEl.textContent = (t||"").toString().toUpperCase();
+    }
+
+    function resetTipoYcantidadUI_(){
+      // tipo vuelve a placeholder
+      tipoMovEl.value = "";
+      // cantidad vuelve vacía con placeholder normal
+      lblCantidadEl.textContent = "CANTIDAD";
+      cantidadEl.placeholder = "INGRESE SU CANTIDAD";
+      cantidadEl.value = "";
+      cantidadEl.classList.remove("adjustMode");
+      // botón vuelve al texto base
+      btnGuardar.textContent = "✅ GUARDAR";
     }
 
     function setProducto(producto, barcode, stock){
@@ -433,13 +428,15 @@
 
       barcodeEl.value = clean;
 
+      // cada vez que escanea/busca producto: reset tipo/cantidad
+      resetTipoYcantidadUI_();
+
       const hit = memLookup.get(clean);
       if (hit && (Date.now() - hit.t) < 15000){
         showBusy("BUSCANDO PRODUCTO...");
         setProducto({ sku: hit.sku, descripcion: hit.descripcion }, clean, hit.stock);
         setMsg("", false);
         cantidadEl.focus();
-        cantidadEl.select?.();
         setBusySuccess("✅ ENCONTRADO");
         setTimeout(()=> hideBusy(), 380);
         return;
@@ -459,14 +456,12 @@
         setProducto(producto, clean, stock);
         setMsg("", false);
         cantidadEl.focus();
-        cantidadEl.select?.();
 
         setBusySuccess("✅ ENCONTRADO");
         setTimeout(()=> hideBusy(), 380);
       }catch(e){
         setProducto(null,"",null);
         setMsg(String(e.message || e).toUpperCase(), true);
-
         setBusyError("❌ NO SE PUDO");
         setTimeout(()=> hideBusy(), 650);
       }
@@ -547,16 +542,10 @@
       if (!ordenEl.value.trim()) ordenEl.value = "0";
       barcodeEl.value = "";
       obsEl.value = "";
-      cantidadEl.value = "1";
       setProducto(null,"",null);
-      // reset UX de ajuste
-      lblCantidadEl.textContent = "CANTIDAD";
-      cantidadEl.placeholder = "INGRESE CANTIDAD";
-      cantidadEl.classList.remove("adjustMode");
-      btnGuardar.textContent = "✅ GUARDAR";
+      resetTipoYcantidadUI_();
     }
 
-    // ===== AJUSTE UX =====
     function onTipoChange_(){
       const t = (tipoMovEl.value || "").toUpperCase();
       if (t === "AJUSTE"){
@@ -567,8 +556,8 @@
         btnGuardar.textContent = "✅ APLICAR AJUSTE";
       }else{
         lblCantidadEl.textContent = "CANTIDAD";
-        cantidadEl.placeholder = "INGRESE CANTIDAD";
-        if (!cantidadEl.value) cantidadEl.value = "1";
+        cantidadEl.placeholder = "INGRESE SU CANTIDAD";
+        if (!cantidadEl.value) cantidadEl.value = "";
         cantidadEl.classList.remove("adjustMode");
         btnGuardar.textContent = "✅ GUARDAR";
       }
@@ -584,7 +573,6 @@
       if (!currentProducto || currentBarcode !== barcode) { btnGuardar.disabled = true; return; }
       if (!tipo_sel || !barcode) { setMsg("FALTAN DATOS", true); return; }
 
-      // --- AJUSTE (Opción 3): el usuario ingresa STOCK REAL ---
       let tipo_mov = tipo_sel;
       let cantidad = Number(cantidadRaw || 0);
       let observacion = obsUser;
@@ -607,18 +595,17 @@
           setBusySuccess("✅ SIN DIFERENCIA");
           setTimeout(()=> hideBusy(), 650);
           setMsg("NO HAY DIFERENCIA DE STOCK", false);
+          // reseteo tipo para que no quede seleccionado
+          resetTipoYcantidadUI_();
           return;
         }
 
-        // Convertimos el ajuste a ENTRADA/SALIDA real
         tipo_mov = diff > 0 ? "ENTRADA" : "SALIDA";
         cantidad = Math.abs(diff);
 
-        // Auditoría en observación
         const audit = `AJUSTE AUTOMÁTICO | STOCK REAL:${stockReal} | SISTEMA:${currentStock} | DIF:${diff}`;
         observacion = obsUser ? (audit + " | " + obsUser) : audit;
       }else{
-        // entrada/salida normal
         if (!cantidadRaw || isNaN(cantidad) || cantidad <= 0){
           setMsg("FALTAN DATOS", true);
           return;
@@ -650,10 +637,8 @@
           body: JSON.stringify(data)
         });
 
-        // invalida cache local para no mostrar stock viejo
         memLookup.delete(barcode);
 
-        // feedback verde
         setBusySuccess(tipo_sel === "AJUSTE" ? "✅ AJUSTE APLICADO" : "✅ GUARDADO");
         setTimeout(()=> hideBusy(), 700);
 
@@ -757,8 +742,8 @@
     // INIT
     ordenEl.value = "0";
     setProducto(null,"",null);
+    resetTipoYcantidadUI_();
     setMsg("", false);
   </script>
 </body>
 </html>
-
