@@ -83,6 +83,10 @@
       padding:10px 12px;
       margin-top:10px;
     }
+    .listItem.in{ background:rgba(15,122,58,.10); border-color:rgba(15,122,58,.22); }
+    .listItem.out{ background:rgba(176,0,32,.10); border-color:rgba(176,0,32,.22); }
+    .listItem.adj{ background:rgba(240,180,0,.14); border-color:rgba(240,180,0,.28); }
+
     .liTop{display:flex;justify-content:space-between;gap:10px;font-weight:900}
     .liSub{margin-top:6px;color:var(--muted);font-weight:800;font-size:12px;line-height:1.35}
 
@@ -116,7 +120,6 @@
       60%{transform:scale(1.03)}
       100%{transform:scale(1)}
     }
-
     .busyText{
       margin-top:12px;
       font-weight:900;
@@ -133,7 +136,7 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ===== CHECK ANIMADO ===== */
+    /* check animado */
     .busyCheck{
       width:44px;height:44px;
       margin:0 auto;
@@ -199,8 +202,10 @@
     <!-- SCREEN: FORM -->
     <div id="screenForm" class="card">
 
+      <!-- botones arriba en bloque -->
       <div class="topActions" style="margin-top:0;">
         <button id="btnVerMovs" type="button" class="btn-secondary">📄 MOVIMIENTOS</button>
+        <button id="btnAddProd" type="button" class="btn-secondary">➕ AGREGAR PRODUCTO</button>
       </div>
 
       <button id="btnScan" type="button" class="btn-secondary">📷 ESCANEAR</button>
@@ -262,41 +267,67 @@
       <div id="listMsg" class="msg"></div>
       <div id="listContainer"></div>
     </div>
+
+    <!-- SCREEN: AGREGAR PRODUCTO -->
+    <div id="screenAdd" class="card" style="display:none;">
+      <div class="topActions" style="margin-top:0;">
+        <button id="btnBackAdd" type="button" class="btn-secondary">⬅️ VOLVER</button>
+        <button id="btnScanAdd" type="button" class="btn-secondary">📷 ESCANEAR</button>
+      </div>
+
+      <label>CÓDIGO DE BARRAS</label>
+      <input id="add_barcode" placeholder="ESCANEÁ O ESCRIBÍ..." />
+
+      <div id="productoAddHint" class="hint"></div>
+
+      <label>SKU</label>
+      <input id="add_sku" placeholder="INGRESE SKU" />
+
+      <label>DESCRIPCIÓN</label>
+      <input id="add_desc" placeholder="INGRESE DESCRIPCIÓN" />
+
+      <button id="btnGuardarProd" type="button" class="btn">✅ GUARDAR PRODUCTO</button>
+
+      <div id="addMsg" class="msg"></div>
+    </div>
   </div>
 
   <!-- POPUP -->
   <div id="busyModal" class="busyModal">
     <div class="busyBox" id="busyBox">
       <div class="busySpinner"></div>
-
       <div class="busyCheck">
         <svg viewBox="0 0 52 52" aria-hidden="true">
           <circle class="busyCheckCircle" cx="26" cy="26" r="22"></circle>
           <path class="busyCheckMark" d="M16 27 L23 34 L37 19"></path>
         </svg>
       </div>
-
       <div id="busyText" class="busyText">PROCESANDO...</div>
     </div>
   </div>
 
   <script>
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEbDR4Ns1BhfUXEsztkNWTYnQuC_saqwYxA2nCgTJsN7cXG8d9OZY7IpI87msULkIc/exec";
+    // ===== CONFIG =====
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwmU56GUpXY9Wg0uDZOANObXEAz-FprpAwtWSAF8j-DwDgjAS25qhSA4CRhU1u5hRN7/exec"; // <-- TU /exec
     const SECRET = "PUBLI_2026_Stock!";
     const REQUIRED_SAME_READS = 2;
 
+    // ===== DOM =====
     const busyModalEl = document.getElementById("busyModal");
     const busyBoxEl = document.getElementById("busyBox");
     const busyTextEl = document.getElementById("busyText");
 
     const screenForm = document.getElementById("screenForm");
     const screenList = document.getElementById("screenList");
+    const screenAdd  = document.getElementById("screenAdd");
 
     const videoEl = document.getElementById("video");
     const camWrapEl = document.getElementById("camWrap");
+
     const btnScan = document.getElementById("btnScan");
     const btnGuardar = document.getElementById("btnGuardar");
     const btnVerMovs = document.getElementById("btnVerMovs");
+    const btnAddProd = document.getElementById("btnAddProd");
 
     const ordenEl = document.getElementById("orden");
     const tipoMovEl = document.getElementById("tipo_mov");
@@ -307,6 +338,7 @@
     const productoEl = document.getElementById("producto");
     const msgEl = document.getElementById("msg");
 
+    // list
     const btnVolver = document.getElementById("btnVolver");
     const btnRefrescar = document.getElementById("btnRefrescar");
     const btnAplicarFiltros = document.getElementById("btnAplicarFiltros");
@@ -317,19 +349,33 @@
     const listMsgEl = document.getElementById("listMsg");
     const listContainer = document.getElementById("listContainer");
 
-    let currentProducto = null;
+    // add product
+    const btnBackAdd = document.getElementById("btnBackAdd");
+    const btnScanAdd = document.getElementById("btnScanAdd");
+    const addBarcodeEl = document.getElementById("add_barcode");
+    const addSkuEl = document.getElementById("add_sku");
+    const addDescEl = document.getElementById("add_desc");
+    const btnGuardarProd = document.getElementById("btnGuardarProd");
+    const addMsgEl = document.getElementById("addMsg");
+    const productoAddHintEl = document.getElementById("productoAddHint");
+
+    // ===== STATE =====
+    let currentProducto = null;   // { sku, descripcion }
     let currentBarcode = "";
-    let currentStock = null;
+    let currentStock = null;      // number
 
-    const memLookup = new Map();
+    const memLookup = new Map(); // barcode -> {sku, descripcion, stock, t}
 
+    // scanner
     let stream = null;
     let detector = null;
     let scanning = false;
     let rafId = null;
     let lastCode = "";
     let sameCount = 0;
+    let scanTarget = "MOV"; // "MOV" | "ADD"
 
+    // popup mínimo visible
     let busyShownAt = 0;
     const BUSY_MIN_MS = 250;
 
@@ -376,17 +422,27 @@
       listMsgEl.className = "msg" + (err ? " err" : "");
       listMsgEl.textContent = (t||"").toString().toUpperCase();
     }
+    function setAddMsg(t="", err=false){
+      addMsgEl.className = "msg" + (err ? " err" : "");
+      addMsgEl.textContent = (t||"").toString().toUpperCase();
+    }
 
     function resetTipoYcantidadUI_(){
-      // tipo vuelve a placeholder
       tipoMovEl.value = "";
-      // cantidad vuelve vacía con placeholder normal
       lblCantidadEl.textContent = "CANTIDAD";
       cantidadEl.placeholder = "INGRESE SU CANTIDAD";
       cantidadEl.value = "";
       cantidadEl.classList.remove("adjustMode");
-      // botón vuelve al texto base
       btnGuardar.textContent = "✅ GUARDAR";
+    }
+
+    function resetOrden_(){
+      ordenEl.value = "0";
+    }
+
+    function resetFormAfterAction_(){
+      resetOrden_();
+      resetTipoYcantidadUI_();
     }
 
     function setProducto(producto, barcode, stock){
@@ -422,14 +478,18 @@
       return await apiGet_({ action:"lookup", secret:SECRET, barcode });
     }
 
-    async function handleBarcode(code){
+    async function catFind(barcode){
+      return await apiGet_({ action:"catfind", secret:SECRET, barcode });
+    }
+
+    async function handleBarcode_MOV(code){
       const clean = String(code||"").trim();
       if (!clean) return;
 
       barcodeEl.value = clean;
 
-      // cada vez que escanea/busca producto: reset tipo/cantidad
-      resetTipoYcantidadUI_();
+      // al buscar producto: reset orden/tipo/cantidad
+      resetFormAfterAction_();
 
       const hit = memLookup.get(clean);
       if (hit && (Date.now() - hit.t) < 15000){
@@ -467,85 +527,42 @@
       }
     }
 
-    async function initDetector(){
-      if (!("BarcodeDetector" in window)) throw new Error("BARCODEDETECTOR NO DISPONIBLE");
-      const formats = await BarcodeDetector.getSupportedFormats();
-      detector = new BarcodeDetector({ formats });
-    }
+    async function handleBarcode_ADD(code){
+      const clean = String(code||"").trim();
+      if (!clean) return;
 
-    async function startCamera(){
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode:{ideal:"environment"}, width:{ideal:1280}, height:{ideal:720} },
-        audio:false
-      });
-      videoEl.srcObject = stream;
-      await videoEl.play();
-    }
+      addBarcodeEl.value = clean;
+      addSkuEl.value = "";
+      addDescEl.value = "";
+      productoAddHintEl.style.display = "none";
+      productoAddHintEl.innerHTML = "";
+      setAddMsg("", false);
 
-    function stopCamera(){
-      if (rafId) cancelAnimationFrame(rafId);
-      rafId = null;
-      if (stream) stream.getTracks().forEach(t=>t.stop());
-      stream = null;
-      videoEl.srcObject = null;
-    }
-
-    async function scanLoop(){
-      if (!scanning) return;
+      showBusy("VERIFICANDO CÓDIGO...");
       try{
-        const barcodes = await detector.detect(videoEl);
-        if (barcodes?.length){
-          const code = (barcodes[0].rawValue || "").trim();
-          if (code){
-            if (code === lastCode) sameCount++;
-            else { lastCode=code; sameCount=1; }
-
-            if (sameCount >= REQUIRED_SAME_READS){
-              stopScan();
-              await handleBarcode(code);
-              return;
-            }
-          }
+        const j = await catFind(clean);
+        if (j.exists){
+          // ya existe
+          productoAddHintEl.innerHTML =
+            `<div>YA EXISTE EN CATÁLOGO</div><div class="line2">SKU: ${j.sku||"-"} | ${j.descripcion||"-"}</div>`;
+          productoAddHintEl.style.display = "block";
+          addSkuEl.value = j.sku || "";
+          addDescEl.value = j.descripcion || "";
+          setBusySuccess("✅ YA EXISTE");
+          setTimeout(()=> hideBusy(), 450);
+        }else{
+          setBusySuccess("✅ LISTO");
+          setTimeout(()=> hideBusy(), 250);
+          addSkuEl.focus();
         }
-      }catch(e){}
-      rafId = requestAnimationFrame(scanLoop);
-    }
-
-    async function startScan(){
-      if (scanning) return;
-      scanning = true;
-      btnScan.textContent = "🛑 DETENER";
-      lastCode=""; sameCount=0;
-
-      try{
-        await initDetector();
-        camWrapEl.style.display = "block";
-        await startCamera();
-        rafId = requestAnimationFrame(scanLoop);
       }catch(e){
-        scanning=false;
-        btnScan.textContent="📷 ESCANEAR";
-        camWrapEl.style.display="none";
-        stopCamera();
-        setMsg("ERROR DE CÁMARA / PERMISOS", true);
+        setBusyError("❌ ERROR");
+        setTimeout(()=> hideBusy(), 700);
+        setAddMsg(String(e.message||e), true);
       }
     }
 
-    function stopScan(){
-      scanning=false;
-      btnScan.textContent="📷 ESCANEAR";
-      stopCamera();
-      camWrapEl.style.display="none";
-    }
-
-    function limpiarCampos(){
-      if (!ordenEl.value.trim()) ordenEl.value = "0";
-      barcodeEl.value = "";
-      obsEl.value = "";
-      setProducto(null,"",null);
-      resetTipoYcantidadUI_();
-    }
-
+    // ===== AJUSTE UX =====
     function onTipoChange_(){
       const t = (tipoMovEl.value || "").toUpperCase();
       if (t === "AJUSTE"){
@@ -557,10 +574,18 @@
       }else{
         lblCantidadEl.textContent = "CANTIDAD";
         cantidadEl.placeholder = "INGRESE SU CANTIDAD";
-        if (!cantidadEl.value) cantidadEl.value = "";
+        cantidadEl.value = "";
         cantidadEl.classList.remove("adjustMode");
         btnGuardar.textContent = "✅ GUARDAR";
       }
+    }
+
+    function limpiarCampos_MOV(){
+      resetOrden_();
+      barcodeEl.value = "";
+      obsEl.value = "";
+      setProducto(null,"",null);
+      resetTipoYcantidadUI_();
     }
 
     async function guardarMovimiento(){
@@ -595,8 +620,7 @@
           setBusySuccess("✅ SIN DIFERENCIA");
           setTimeout(()=> hideBusy(), 650);
           setMsg("NO HAY DIFERENCIA DE STOCK", false);
-          // reseteo tipo para que no quede seleccionado
-          resetTipoYcantidadUI_();
+          resetFormAfterAction_();
           return;
         }
 
@@ -643,7 +667,7 @@
         setTimeout(()=> hideBusy(), 700);
 
         setMsg("", false);
-        limpiarCampos();
+        limpiarCampos_MOV();
       }catch(e){
         setBusyError("❌ ERROR AL GUARDAR");
         setTimeout(()=> hideBusy(), 900);
@@ -653,6 +677,7 @@
       }
     }
 
+    // ===== MOVIMIENTOS LIST =====
     function fmtFecha(iso){
       try{
         const d = new Date(iso);
@@ -664,6 +689,15 @@
         const mi = String(d.getMinutes()).padStart(2,"0");
         return `${dd}/${mm}/${yy} ${hh}:${mi}`;
       }catch{ return iso; }
+    }
+
+    function classifyMov_(it){
+      const tipo = String(it.tipo_mov||"").toUpperCase();
+      const obs = String(it.observacion||"").toUpperCase();
+      if (obs.includes("AJUSTE AUTOMÁTICO")) return "adj";
+      if (tipo === "ENTRADA") return "in";
+      if (tipo === "SALIDA") return "out";
+      return "";
     }
 
     async function cargarMovimientos(){
@@ -679,7 +713,7 @@
         const j = await apiGet_({
           action:"list",
           secret:SECRET,
-          limit:"120",
+          limit:"160",
           tipo,
           q,
           from,
@@ -698,7 +732,7 @@
           const obs = String(it.observacion||"");
 
           const div = document.createElement("div");
-          div.className = "listItem";
+          div.className = "listItem " + classifyMov_(it);
           div.innerHTML = `
             <div class="liTop"><div>${fecha}</div><div>${tipoMov}</div></div>
             <div class="liSub">${prod}</div>
@@ -711,33 +745,187 @@
       }
     }
 
+    // ===== AGREGAR PRODUCTO =====
+    function clearAddForm_(){
+      addBarcodeEl.value = "";
+      addSkuEl.value = "";
+      addDescEl.value = "";
+      setAddMsg("", false);
+      productoAddHintEl.style.display = "none";
+      productoAddHintEl.innerHTML = "";
+    }
+
+    async function guardarProducto_(){
+      const barcode = String(addBarcodeEl.value||"").trim();
+      const sku = String(addSkuEl.value||"").trim().toUpperCase();
+      const descripcion = String(addDescEl.value||"").trim().toUpperCase();
+
+      if (!barcode || !sku || !descripcion){
+        setAddMsg("FALTAN DATOS", true);
+        return;
+      }
+
+      btnGuardarProd.disabled = true;
+
+      const data = {
+        action: "add_product",
+        secret: SECRET,
+        barcode,
+        sku,
+        descripcion
+      };
+
+      try{
+        showBusy("GUARDANDO PRODUCTO...");
+
+        await fetch(APPS_SCRIPT_URL, {
+          method:"POST",
+          mode:"no-cors",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify(data)
+        });
+
+        setBusySuccess("✅ PRODUCTO GUARDADO");
+        setTimeout(()=> hideBusy(), 700);
+
+        setAddMsg("", false);
+        clearAddForm_();
+      }catch(e){
+        setBusyError("❌ ERROR");
+        setTimeout(()=> hideBusy(), 900);
+        setAddMsg("ERROR AL GUARDAR", true);
+      }finally{
+        btnGuardarProd.disabled = false;
+      }
+    }
+
+    // ===== SCANNER =====
+    async function initDetector(){
+      if (!("BarcodeDetector" in window)) throw new Error("BARCODEDETECTOR NO DISPONIBLE");
+      const formats = await BarcodeDetector.getSupportedFormats();
+      detector = new BarcodeDetector({ formats });
+    }
+
+    async function startCamera(){
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode:{ideal:"environment"}, width:{ideal:1280}, height:{ideal:720} },
+        audio:false
+      });
+      videoEl.srcObject = stream;
+      await videoEl.play();
+    }
+
+    function stopCamera(){
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = null;
+      if (stream) stream.getTracks().forEach(t=>t.stop());
+      stream = null;
+      videoEl.srcObject = null;
+    }
+
+    async function scanLoop(){
+      if (!scanning) return;
+      try{
+        const barcodes = await detector.detect(videoEl);
+        if (barcodes?.length){
+          const code = (barcodes[0].rawValue || "").trim();
+          if (code){
+            if (code === lastCode) sameCount++;
+            else { lastCode=code; sameCount=1; }
+
+            if (sameCount >= REQUIRED_SAME_READS){
+              stopScan();
+              if (scanTarget === "ADD") await handleBarcode_ADD(code);
+              else await handleBarcode_MOV(code);
+              return;
+            }
+          }
+        }
+      }catch(e){}
+      rafId = requestAnimationFrame(scanLoop);
+    }
+
+    async function startScan(){
+      if (scanning) return;
+      scanning = true;
+      lastCode=""; sameCount=0;
+
+      try{
+        await initDetector();
+        camWrapEl.style.display = "block";
+        await startCamera();
+        rafId = requestAnimationFrame(scanLoop);
+      }catch(e){
+        scanning=false;
+        camWrapEl.style.display="none";
+        stopCamera();
+        if (scanTarget === "ADD") setAddMsg("ERROR DE CÁMARA / PERMISOS", true);
+        else setMsg("ERROR DE CÁMARA / PERMISOS", true);
+      }
+    }
+
+    function stopScan(){
+      scanning=false;
+      stopCamera();
+      camWrapEl.style.display="none";
+    }
+
     // ===== EVENTS =====
-    btnScan.addEventListener("click", ()=> scanning ? stopScan() : startScan());
+    btnScan.addEventListener("click", ()=>{
+      scanTarget = "MOV";
+      scanning ? stopScan() : startScan();
+      btnScan.textContent = scanning ? "🛑 DETENER" : "📷 ESCANEAR";
+    });
+
+    btnScanAdd.addEventListener("click", ()=>{
+      scanTarget = "ADD";
+      scanning ? stopScan() : startScan();
+      btnScanAdd.textContent = scanning ? "🛑 DETENER" : "📷 ESCANEAR";
+    });
 
     ordenEl.addEventListener("input", ()=> { ordenEl.value = ordenEl.value.replace(/\D/g,""); });
     ordenEl.addEventListener("blur", ()=> { if (!ordenEl.value.trim()) ordenEl.value = "0"; });
 
     tipoMovEl.addEventListener("change", onTipoChange_);
 
-    barcodeEl.addEventListener("change", async ()=>{
-      await handleBarcode(barcodeEl.value);
-    });
+    barcodeEl.addEventListener("change", async ()=>{ await handleBarcode_MOV(barcodeEl.value); });
+    addBarcodeEl.addEventListener("change", async ()=>{ await handleBarcode_ADD(addBarcodeEl.value); });
 
     btnGuardar.addEventListener("click", guardarMovimiento);
 
     btnVerMovs.addEventListener("click", async ()=>{
       screenForm.style.display="none";
+      screenAdd.style.display="none";
       screenList.style.display="block";
       await cargarMovimientos();
     });
 
-    btnVolver.addEventListener("click", ()=>{
+    btnAddProd.addEventListener("click", ()=>{
+      screenForm.style.display="none";
+      screenList.style.display="none";
+      screenAdd.style.display="block";
+      clearAddForm_();
+      scanTarget = "ADD";
+    });
+
+    btnBackAdd.addEventListener("click", ()=>{
+      screenAdd.style.display="none";
       screenList.style.display="none";
       screenForm.style.display="block";
+      scanTarget = "MOV";
+    });
+
+    btnVolver.addEventListener("click", ()=>{
+      screenList.style.display="none";
+      screenAdd.style.display="none";
+      screenForm.style.display="block";
+      scanTarget = "MOV";
     });
 
     btnRefrescar.addEventListener("click", cargarMovimientos);
     btnAplicarFiltros.addEventListener("click", cargarMovimientos);
+
+    btnGuardarProd.addEventListener("click", guardarProducto_);
 
     // INIT
     ordenEl.value = "0";
@@ -747,4 +935,3 @@
   </script>
 </body>
 </html>
-
