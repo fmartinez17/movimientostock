@@ -406,7 +406,7 @@
 
   <script>
     // ===== CONFIG =====
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEKpBZms007uVHgh5XkjDUWcrQkMJN8zLdaBPTEd9PLS9_yJBLq1K_nYg0HYkOFE9m/exec";
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyx1UU1A0ne5ACO-iCcyfD0GcPrN2qVlcZbPvdgrkyo5hyTYqt6p_EpwTKGzV2GpmLF/exec";
     const SECRET = "PUBLI_2026_Stock!";
     const REQUIRED_SAME_READS = 2;
 
@@ -902,10 +902,10 @@
         cantidad = Math.abs(diff);
 
         const altaBaja = diff > 0
-          ? `SE DIERON DE ALTA: ${Math.abs(diff)}`
-          : `SE DIERON DE BAJA: ${Math.abs(diff)}`;
-
-        const audit = `AJUSTE AUTOMÁTICO | STOCK REAL: ${stockReal} | STOCK SISTEMA: ${currentStock} | ${altaBaja}`;
+          ? `SE DAN DE ALTA ${Math.abs(diff)}`
+          : `SE DAN DE BAJA ${Math.abs(diff)}`;
+        
+        const audit = `OBS: AJUSTE AUTOMÁTICO | STOCK REAL: ${stockReal} | SISTEMA: ${currentStock} | ${altaBaja}`;
         observacion = obsUser ? (audit + " | " + obsUser) : audit;
       }else{
         if (!cantidadRaw || isNaN(cantidad) || cantidad <= 0){
@@ -1349,6 +1349,7 @@ function fmtUsuario_(u){
   </script>
 </body>
 </html>
+
 
 
 
