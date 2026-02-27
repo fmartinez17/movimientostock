@@ -993,40 +993,32 @@
 
     // Formato de obs del ajuste: 2 líneas exactas
     function normalizeObsForAjuste_(obsRaw){
-      const up = String(obsRaw || "").toUpperCase();
+  const up = String(obsRaw || "").toUpperCase();
 
-      const mReal = up.match(/STOCK\s*REAL\s*:\s*(\d+)/);
-      const mSis  =
-        up.match(/STOCK\s*SISTEMA\s*:\s*(\d+)/) ||
-        up.match(/\bSISTEMA\s*:\s*(\d+)/) ||
-        up.match(/STOCK\s*DEL\s*SISTEMA\s*:\s*(\d+)/);
+  // Parse STOCK REAL
+  const mReal = up.match(/STOCK\s*REAL\s*:\s*(\d+)/);
 
-      if (!mReal || !mSis) return "";
+  // Parse STOCK SISTEMA (acepta variantes)
+  const mSis =
+    up.match(/STOCK\s*SISTEMA\s*:\s*(\d+)/) ||
+    up.match(/\bSISTEMA\s*:\s*(\d+)/) ||
+    up.match(/STOCK\s*DEL\s*SISTEMA\s*:\s*(\d+)/);
 
-      const stockReal = Number(mReal[1]);
-      const sistema   = Number(mSis[1]);
+  if (!mReal || !mSis) return "";
 
-      // tolera: SE DAN / SE DA, con o sin ":" y espacios
-      const mBaja = up.match(/SE\s*DA[N]?\s*DE\s*BAJA\s*:?\s*(\d+)/);
-      const mAlta = up.match(/SE\s*DA[N]?\s*DE\s*ALTA\s*:?\s*(\d+)/);
+  const stockReal = Number(mReal[1]);
+  const sistema   = Number(mSis[1]);
 
-      let linea2 = "";
-      if (mBaja) linea2 = `SE DAN DE BAJA ${mBaja[1]}`;
-      else if (mAlta) linea2 = `SE DAN DE ALTA ${mAlta[1]}`;
-      else {
-        // si no encuentra número, al menos no pongas "AJUSTE"
-        // intenta agarrar último número suelto (por si cambia el texto)
-        const mAny = up.match(/(ALTA|BAJA)\s*:?\s*(\d+)/);
-        if (mAny){
-          linea2 = (mAny[1] === "ALTA") ? `SE DAN DE ALTA ${mAny[2]}` : `SE DAN DE BAJA ${mAny[2]}`;
-        } else {
-          // último recurso: sin número
-          linea2 = `SE DAN DE BAJA`;
-        }
-      }
+  // ✅ CLAVE: calcular diferencia SIEMPRE
+  const diff = stockReal - sistema;
 
-      return `STOCK REAL: ${stockReal} | STOCK SISTEMA: ${sistema}<br>${linea2}`;
-    }
+  let linea2 = "";
+  if (diff > 0) linea2 = `SE DAN DE ALTA ${diff}`;
+  else if (diff < 0) linea2 = `SE DAN DE BAJA ${Math.abs(diff)}`;
+  else linea2 = `SIN DIFERENCIA`;
+
+  return `STOCK REAL: ${stockReal} | STOCK SISTEMA: ${sistema}<br>${linea2}`;
+}
 
     // Badge: normal -> ENTRADA/SALIDA; ajuste -> AJUSTE | ENTRADA/SALIDA
     function badgeInfo_(it){
@@ -1404,3 +1396,4 @@
   </script>
 </body>
 </html>
+
