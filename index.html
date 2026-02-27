@@ -43,12 +43,14 @@
       width:auto !important;
       margin-top:0 !important;
       padding:8px 10px !important;
+
       border:none;
       background:transparent;
       cursor:pointer;
       font-size:20px;
       line-height:1;
       border-radius:10px;
+
       margin-left:auto;
       flex:0 0 auto;
     }
@@ -120,24 +122,42 @@
     .listItem.out{ background:rgba(176,0,32,.10); border-color:rgba(176,0,32,.22); }
     .listItem.adj{ background:rgba(240,180,0,.14); border-color:rgba(240,180,0,.28); }
 
-    .liTop{display:flex;justify-content:space-between;gap:10px;font-weight:900}
-    .liTopRight{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+    .liTop{display:flex;justify-content:space-between;gap:10px;font-weight:900;align-items:flex-start}
     .liSub{margin-top:6px;color:var(--muted);font-weight:800;font-size:12px;line-height:1.35}
     ::placeholder{color:rgba(11,45,92,.45)}
 
-    /* ===== BADGES ===== */
+    /* ===== BADGE (solo uno por item) ===== */
+    .tipoWrap{display:flex;justify-content:flex-end}
     .badge{
-      font-size:10px;
-      font-weight:900;
-      padding:4px 8px;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:4px 10px;
       border-radius:999px;
+      font-weight:900;
+      font-size:11px;
       letter-spacing:.6px;
-      display:inline-block;
       border:1px solid rgba(11,45,92,.18);
+      background:#fff;
+      color:var(--brand);
+      line-height:1.2;
+      white-space:nowrap;
     }
-    .badgeIn{ background:rgba(15,122,58,.18); color:#0F7A3A; }
-    .badgeOut{ background:rgba(176,0,32,.16); color:#B00020; }
-    .badgeAdj{ background:rgba(240,180,0,.25); color:#7A5A00; }
+    .badge.in{
+      background:rgba(15,122,58,.12);
+      border-color:rgba(15,122,58,.30);
+      color:rgba(15,122,58,.95);
+    }
+    .badge.out{
+      background:rgba(176,0,32,.12);
+      border-color:rgba(176,0,32,.30);
+      color:rgba(176,0,32,.95);
+    }
+    .badge.adj{
+      background:rgba(240,180,0,.20);
+      border-color:rgba(240,180,0,.35);
+      color:rgba(120,80,0,.95);
+    }
 
     /* ===== PRODUCTOS LISTA ===== */
     .prodRow{
@@ -257,6 +277,7 @@
 
 <body>
   <div class="wrap">
+
     <!-- USER BAR -->
     <div id="userBar" class="userBar" style="display:none;">
       <div id="userName" class="userName">👤</div>
@@ -285,6 +306,7 @@
 
     <!-- FORM -->
     <div id="screenForm" class="card" style="display:none;">
+
       <div class="navBlocks" style="margin-top:0;">
         <button id="btnVerMovs" type="button" class="btn-secondary">📋 MOVIMIENTOS</button>
         <button id="btnVerProds" type="button" class="btn-secondary">📦 PRODUCTOS</button>
@@ -359,14 +381,13 @@
 
       <label>BUSCAR</label>
       <input id="pQ" placeholder="SKU / DESCRIPCIÓN / CÓDIGO" />
-
       <button id="btnBuscarProds" type="button" class="btn-secondary">🔎 BUSCAR</button>
 
       <div id="prodsMsg" class="msg"></div>
       <div id="prodsContainer"></div>
     </div>
 
-    <!-- AGREGAR PRODUCTO -->
+    <!-- AGREGAR -->
     <div id="screenAdd" class="card" style="display:none;">
       <div class="filterRow" style="margin-top:0;">
         <button id="btnBackAdd" type="button" class="btn-secondary">⬅️ VOLVER</button>
@@ -491,20 +512,28 @@
     const prodsContainer = document.getElementById("prodsContainer");
 
     const LS_USER = "publi_stock_user";
-    function setUserCache_(u){ localStorage.setItem(LS_USER, JSON.stringify(u || {})); }
-    function getUserCache_(){ try{ return JSON.parse(localStorage.getItem(LS_USER) || "{}"); }catch{ return {}; } }
+
+    function setUserCache_(u){
+      localStorage.setItem(LS_USER, JSON.stringify(u || {}));
+    }
+    function getUserCache_(){
+      try{ return JSON.parse(localStorage.getItem(LS_USER) || "{}"); }
+      catch{ return {}; }
+    }
 
     function paintUserBar_(u){
+      if (!userBarEl || !userNameEl) return;
       const full = `${u.nombre||""} ${u.apellido||""}`.trim().toUpperCase();
       userNameEl.textContent = `👤 ${full || (u.usuario||"") || "USUARIO"}`;
       userBarEl.style.display = "flex";
     }
 
     // ===== STATE =====
-    let currentProducto = null;
+    let currentProducto = null;   // { sku, descripcion }
     let currentBarcode = "";
-    let currentStock = null;
-    const memLookup = new Map();
+    let currentStock = null;      // number
+
+    const memLookup = new Map(); // barcode -> {sku, descripcion, stock, t}
 
     // scanner
     let stream = null;
@@ -513,14 +542,18 @@
     let rafId = null;
     let lastCode = "";
     let sameCount = 0;
-    let scanTarget = "MOV";
+    let scanTarget = "MOV"; // "MOV" | "ADD"
 
     // popup mínimo visible
     let busyShownAt = 0;
     const BUSY_MIN_MS = 250;
 
     function resetBusyStyle(){ busyBoxEl.classList.remove("success","error"); }
-    function popBusy(){ busyBoxEl.classList.remove("pop"); void busyBoxEl.offsetWidth; busyBoxEl.classList.add("pop"); }
+    function popBusy(){
+      busyBoxEl.classList.remove("pop");
+      void busyBoxEl.offsetWidth;
+      busyBoxEl.classList.add("pop");
+    }
     function showBusy(text="PROCESANDO..."){
       busyShownAt = Date.now();
       resetBusyStyle();
@@ -534,15 +567,45 @@
       setTimeout(()=>{ busyModalEl.style.display = "none"; resetBusyStyle(); }, wait);
     }
     function setBusyText(text=""){ busyTextEl.textContent = (text||"").toString().toUpperCase(); }
-    function setBusySuccess(text="✅ OK"){ busyBoxEl.classList.add("success"); setBusyText(text); popBusy(); navigator.vibrate?.(60); }
-    function setBusyError(text="❌ ERROR"){ busyBoxEl.classList.add("error"); setBusyText(text); popBusy(); navigator.vibrate?.(120); }
-    async function popupError_(text, ms=900){ showBusy(text); setBusyError(text); await new Promise(r=>setTimeout(r, ms)); hideBusy(); }
+    function setBusySuccess(text="✅ OK"){
+      busyBoxEl.classList.add("success");
+      setBusyText(text);
+      popBusy();
+      navigator.vibrate?.(60);
+    }
+    function setBusyError(text="❌ ERROR"){
+      busyBoxEl.classList.add("error");
+      setBusyText(text);
+      popBusy();
+      navigator.vibrate?.(120);
+    }
+    async function popupError_(text, ms=900){
+      showBusy(text);
+      setBusyError(text);
+      await new Promise(r=>setTimeout(r, ms));
+      hideBusy();
+    }
 
-    function setMsg(t="", err=false){ msgEl.className = "msg" + (err ? " err" : ""); msgEl.textContent = (t||"").toString().toUpperCase(); }
-    function setListMsg(t="", err=false){ listMsgEl.className = "msg" + (err ? " err" : ""); listMsgEl.textContent = (t||"").toString().toUpperCase(); }
-    function setAddMsg(t="", err=false){ addMsgEl.className = "msg" + (err ? " err" : ""); addMsgEl.textContent = (t||"").toString().toUpperCase(); }
-    function setLoginMsg(t="", err=false){ loginMsgEl.className = "msg" + (err ? " err" : ""); loginMsgEl.textContent = (t||"").toString().toUpperCase(); }
-    function setProdsMsg(t="", err=false){ prodsMsgEl.className = "msg" + (err ? " err" : ""); prodsMsgEl.textContent = (t||"").toString().toUpperCase(); }
+    function setMsg(t="", err=false){
+      msgEl.className = "msg" + (err ? " err" : "");
+      msgEl.textContent = (t||"").toString().toUpperCase();
+    }
+    function setListMsg(t="", err=false){
+      listMsgEl.className = "msg" + (err ? " err" : "");
+      listMsgEl.textContent = (t||"").toString().toUpperCase();
+    }
+    function setAddMsg(t="", err=false){
+      addMsgEl.className = "msg" + (err ? " err" : "");
+      addMsgEl.textContent = (t||"").toString().toUpperCase();
+    }
+    function setLoginMsg(t="", err=false){
+      loginMsgEl.className = "msg" + (err ? " err" : "");
+      loginMsgEl.textContent = (t||"").toString().toUpperCase();
+    }
+    function setProdsMsg(t="", err=false){
+      prodsMsgEl.className = "msg" + (err ? " err" : "");
+      prodsMsgEl.textContent = (t||"").toString().toUpperCase();
+    }
 
     function resetTipoYcantidadUI_(){
       tipoMovEl.value = "";
@@ -677,6 +740,7 @@
       btnLogin.disabled = true;
       try{
         showBusy("INICIANDO SESIÓN...");
+
         const j = await apiPost_({ action:"login", usuario, clave });
 
         setToken(j.token || "");
@@ -685,6 +749,7 @@
 
         setBusySuccess("✅ OK");
         setTimeout(()=> hideBusy(), 450);
+
         showApp_();
 
       }catch(e){
@@ -711,8 +776,12 @@
     }
 
     // ===== LOOKUP / CAT =====
-    async function fetchLookup(barcode){ return await apiGet_({ action:"lookup", barcode }); }
-    async function catFind(barcode){ return await apiGet_({ action:"catfind", barcode }); }
+    async function fetchLookup(barcode){
+      return await apiGet_({ action:"lookup", barcode });
+    }
+    async function catFind(barcode){
+      return await apiGet_({ action:"catfind", barcode });
+    }
 
     async function handleBarcode_MOV(code){
       const clean = String(code||"").trim();
@@ -854,10 +923,8 @@
           ? `SE DAN DE ALTA ${Math.abs(diff)}`
           : `SE DAN DE BAJA ${Math.abs(diff)}`;
 
-        // ✅ guardamos un marcador "AJUSTE |" pero la UI NO lo muestra
-        const audit = `AJUSTE | STOCK REAL: ${stockReal} | STOCK SISTEMA: ${currentStock} | ${altaBaja}`;
+        const audit = `STOCK REAL: ${stockReal} | STOCK SISTEMA: ${currentStock} | ${altaBaja}`;
         observacion = obsUser ? (audit + " | " + obsUser) : audit;
-
       }else{
         if (!cantidadRaw || isNaN(cantidad) || cantidad <= 0){
           await popupError_("FALTAN DATOS", 900);
@@ -911,61 +978,77 @@
       }catch{ return iso; }
     }
 
-    // ✅ Detecta/forma AJUSTE y devuelve EXACTAMENTE lo que querés mostrar
+    function fmtUsuario_(u){
+      const x = String(u || "").trim();
+      return x ? x.toUpperCase() : "";
+    }
+
+    // Ajuste: detecta por presencia de ambos stocks
+    function isAjusteByObs_(obsRaw){
+      const up = String(obsRaw || "").toUpperCase();
+      const hasReal = /STOCK\s*REAL\s*:\s*\d+/.test(up);
+      const hasSis  = /STOCK\s*SISTEMA\s*:\s*\d+|\bSISTEMA\s*:\s*\d+|STOCK\s*DEL\s*SISTEMA\s*:\s*\d+/.test(up);
+      return hasReal && hasSis;
+    }
+
+    // Formato de obs del ajuste: 2 líneas exactas
     function normalizeObsForAjuste_(obsRaw){
       const up = String(obsRaw || "").toUpperCase();
 
-      const hasReal = /STOCK\s*REAL\s*:\s*\d+/.test(up);
-      const hasSis  = /(STOCK\s*SISTEMA\s*:\s*\d+|\bSISTEMA\s*:\s*\d+)/.test(up);
-      const hasAltaBaja = /SE\s*DAN\s*DE\s*(ALTA|BAJA)\s*\d+/.test(up);
-
-      // si no parece ajuste, no tocamos
-      if (!(hasReal && hasSis && (hasAltaBaja || up.includes("AJUSTE")))) return "";
-
       const mReal = up.match(/STOCK\s*REAL\s*:\s*(\d+)/);
-      const mSis  = up.match(/STOCK\s*SISTEMA\s*:\s*(\d+)/) || up.match(/\bSISTEMA\s*:\s*(\d+)/);
+      const mSis  =
+        up.match(/STOCK\s*SISTEMA\s*:\s*(\d+)/) ||
+        up.match(/\bSISTEMA\s*:\s*(\d+)/) ||
+        up.match(/STOCK\s*DEL\s*SISTEMA\s*:\s*(\d+)/);
 
       if (!mReal || !mSis) return "";
 
       const stockReal = Number(mReal[1]);
       const sistema   = Number(mSis[1]);
 
-      const mBaja = up.match(/SE\s*DAN\s*DE\s*BAJA\s*(\d+)/);
-      const mAlta = up.match(/SE\s*DAN\s*DE\s*ALTA\s*(\d+)/);
+      // tolera: SE DAN / SE DA, con o sin ":" y espacios
+      const mBaja = up.match(/SE\s*DA[N]?\s*DE\s*BAJA\s*:?\s*(\d+)/);
+      const mAlta = up.match(/SE\s*DA[N]?\s*DE\s*ALTA\s*:?\s*(\d+)/);
 
       let linea2 = "";
       if (mBaja) linea2 = `SE DAN DE BAJA ${mBaja[1]}`;
       else if (mAlta) linea2 = `SE DAN DE ALTA ${mAlta[1]}`;
-      else linea2 = "AJUSTE";
+      else {
+        // si no encuentra número, al menos no pongas "AJUSTE"
+        // intenta agarrar último número suelto (por si cambia el texto)
+        const mAny = up.match(/(ALTA|BAJA)\s*:?\s*(\d+)/);
+        if (mAny){
+          linea2 = (mAny[1] === "ALTA") ? `SE DAN DE ALTA ${mAny[2]}` : `SE DAN DE BAJA ${mAny[2]}`;
+        } else {
+          // último recurso: sin número
+          linea2 = `SE DAN DE BAJA`;
+        }
+      }
 
       return `STOCK REAL: ${stockReal} | STOCK SISTEMA: ${sistema}<br>${linea2}`;
     }
 
-    function fmtUsuario_(u){
-      const x = String(u || "").trim();
-      return x ? x.toUpperCase() : "";
-    }
+    // Badge: normal -> ENTRADA/SALIDA; ajuste -> AJUSTE | ENTRADA/SALIDA
+    function badgeInfo_(it){
+      const tipo = String(it.tipo_mov||"").toUpperCase();
+      const obs  = String(it.observacion||"");
+      const isAdj = isAjusteByObs_(obs);
 
-    function isAjusteByObs_(obsRaw){
-      const up = String(obsRaw || "").toUpperCase();
-      const hasReal = /STOCK\s*REAL\s*:\s*\d+/.test(up);
-      const hasSis  = /(STOCK\s*SISTEMA\s*:\s*\d+|\bSISTEMA\s*:\s*\d+)/.test(up);
-      const hasAltaBaja = /SE\s*DAN\s*DE\s*(ALTA|BAJA)\s*\d+/.test(up);
-      return (hasReal && hasSis && (hasAltaBaja || up.includes("AJUSTE")));
-    }
+      if (isAdj){
+        if (tipo === "ENTRADA") return { label:"AJUSTE | ENTRADA", cls:"adj" };
+        if (tipo === "SALIDA")  return { label:"AJUSTE | SALIDA",  cls:"adj" };
+        return { label:"AJUSTE", cls:"adj" };
+      }
 
-    function badgeHtml_(tipoMov, isAjuste){
-      const t = String(tipoMov || "").toUpperCase();
-      if (isAjuste) return `<span class="badge badgeAdj">AJUSTE</span>`;
-      if (t === "ENTRADA") return `<span class="badge badgeIn">ENTRADA</span>`;
-      if (t === "SALIDA")  return `<span class="badge badgeOut">SALIDA</span>`;
-      return ``;
+      if (tipo === "ENTRADA") return { label:"ENTRADA", cls:"in" };
+      if (tipo === "SALIDA")  return { label:"SALIDA",  cls:"out" };
+      return { label:(tipo||"-"), cls:"" };
     }
 
     function classifyMov_(it){
       const tipo = String(it.tipo_mov||"").toUpperCase();
-      const obs = String(it.observacion||"");
-      if (isAjusteByObs_(obs)) return "adj";
+      const isAdj = isAjusteByObs_(it.observacion);
+      if (isAdj) return "adj";
       if (tipo === "ENTRADA") return "in";
       if (tipo === "SALIDA") return "out";
       return "";
@@ -1001,39 +1084,37 @@
 
         for (const it of items){
           const fecha = fmtFecha(it.timestamp);
-
-          const tipoMov = String(it.tipo_mov||"").toUpperCase(); // ENTRADA / SALIDA
           const prod = String(it.descripcion||"");
           const cant = Number(it.cantidad||0);
 
           const usuario = fmtUsuario_(it.usuario);
           const obsRaw = String(it.observacion||"");
-
           const isAjuste = isAjusteByObs_(obsRaw);
 
           const obsFmt = isAjuste
             ? normalizeObsForAjuste_(obsRaw)
             : (obsRaw ? `OBS: ${obsRaw}` : "");
 
+          const b = badgeInfo_(it);
+
           const div = document.createElement("div");
           div.className = "listItem " + classifyMov_(it);
 
-          // ✅ SALIDA + BADGE / ENTRADA + BADGE
-          const topRight = `
-            <span>${tipoMov || ""}</span>
-            ${badgeHtml_(tipoMov, isAjuste)}
-          `;
-
+          // ✅ TOP: SOLO FECHA + BADGE (sin texto ENTRADA/SALIDA extra)
           div.innerHTML = `
             <div class="liTop">
               <div>${fecha}</div>
-              <div class="liTopRight">${topRight}</div>
+              <div class="tipoWrap">
+                <span class="badge ${b.cls}">${b.label}</span>
+              </div>
             </div>
 
             <div class="liSub">${prod}</div>
 
             ${!isAjuste ? `<div class="liSub">CANTIDAD: ${cant}</div>` : ``}
+
             ${usuario ? `<div class="liSub">USUARIO: ${usuario}</div>` : ``}
+
             ${obsFmt ? `<div class="liSub">${obsFmt}</div>` : ``}
           `;
           listContainer.appendChild(div);
