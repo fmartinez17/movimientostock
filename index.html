@@ -1008,7 +1008,7 @@
 
   const n = isEntrada ? (mAlta ? Number(mAlta[1]) : null) : (mBaja ? Number(mBaja[1]) : null);
   if (n != null){
-    return `OBS: AJUSTE AUTOMÁTICO | STOCK REAL: ${stockReal} | SISTEMA: ${sistema} | ${isEntrada ? "SE DAN DE ALTA" : "SE DAN DE BAJA"} ${n}`;
+    return `OBS: AJUSTE AUTOMÁTICO | STOCK REAL: ${stockReal} | SISTEMA: ${sistema} <br> ${isEntrada ? "SE DAN DE ALTA" : "SE DAN DE BAJA"} ${n}`;
   }
 
   // fallback
@@ -1081,6 +1081,7 @@ function fmtUsuario_(u){
   div.innerHTML = `
     <div class="liTop"><div>${fecha}</div><div>${tipoMov}</div></div>
   <div class="liSub">${prod}</div>
+  ${!isAjuste ? `<div class="liSub">CANTIDAD: ${cant}</div>` : ``}
   ${usuario ? `<div class="liSub">USUARIO: ${usuario}</div>` : ``}
   ${obsFmt ? `<div class="liSub">${obsFmt}</div>` : ``}
 `;
@@ -1372,6 +1373,7 @@ function fmtUsuario_(u){
   </script>
 </body>
 </html>
+
 
 
 
