@@ -34,14 +34,8 @@
   min-width:0;
   font-weight:900;
   letter-spacing:.4px;
-
-  color: var(--brand) !important;     /* fuerza color */
-  background: transparent !important; /* evita fondos raros */
-  opacity: 1 !important;
-  visibility: visible !important;
-  display:flex !important;
-  align-items:center;
-
+  color: var(--brand);
+  background: transparent;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
@@ -58,6 +52,7 @@
   padding:8px 8px;
   border-radius:10px;
 }
+    
 .logoutBtn:hover{ background:rgba(11,45,92,.06) }
 .logoutBtn:active{ transform:scale(.98) }
     
@@ -497,10 +492,17 @@
       try{ return JSON.parse(localStorage.getItem(LS_USER) || "{}"); }
       catch{ return {}; }
     }
+
     function paintUserBar_(u){
-      const full = `${u.nombre||""} ${u.apellido||""}`.trim().toUpperCase();
-      userNameEl.textContent = `👤 ${full || (u.usuario||"") || "USUARIO"}`;
-    }
+  if (!userBarEl || !userNameEl) {
+    console.error("USER BAR DOM NO ENCONTRADO", { userBarEl, userNameEl });
+    return;
+  }
+  const full = `${u.nombre||""} ${u.apellido||""}`.trim().toUpperCase();
+  userNameEl.textContent = `👤 ${full || (u.usuario||"") || "USUARIO"}`;
+  userBarEl.style.display = "flex";
+}
+    
 
     // ===== STATE =====
     let currentProducto = null;   // { sku, descripcion }
@@ -689,12 +691,11 @@
   screenList.style.display="none";
   screenAdd.style.display="none";
   screenProds.style.display="none";
-
   userBarEl.style.display = "flex";
-  paintUserBar_(getUserCache_());   // ✅ SIEMPRE pinta algo (aunque whoami falle)
-
   stopScan();
   resetMovForm_();
+
+  paintUserBar_(getUserCache_()); // ✅ fuerza mostrar nombre
 }
 
     async function whoAmI_(){
@@ -1297,6 +1298,7 @@
   </script>
 </body>
 </html>
+
 
 
 
