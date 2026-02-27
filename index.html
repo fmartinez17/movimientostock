@@ -684,15 +684,18 @@
     }
 
     function showApp_(){
-      screenLogin.style.display="none";
-      screenForm.style.display="block";
-      screenList.style.display="none";
-      screenAdd.style.display="none";
-      screenProds.style.display="none";
-      userBarEl.style.display = "flex";
-      stopScan();
-      resetMovForm_();
-    }
+  screenLogin.style.display="none";
+  screenForm.style.display="block";
+  screenList.style.display="none";
+  screenAdd.style.display="none";
+  screenProds.style.display="none";
+
+  userBarEl.style.display = "flex";
+  paintUserBar_(getUserCache_());   // ✅ SIEMPRE pinta algo (aunque whoami falle)
+
+  stopScan();
+  resetMovForm_();
+}
 
     async function whoAmI_(){
   const j = await apiGet_({ action:"whoami" });
@@ -719,10 +722,7 @@
         setToken(j.token || "");
 
         setUserCache_({ usuario:j.usuario, nombre:j.nombre, apellido:j.apellido });
-paintUserBar_({ usuario:j.usuario, nombre:j.nombre, apellido:j.apellido });
-    
-        const full = `${j.nombre||""} ${j.apellido||""}`.trim().toUpperCase();
-        userNameEl.textContent = `👤 ${full || (j.usuario||"")}`;
+        paintUserBar_({ usuario:j.usuario, nombre:j.nombre, apellido:j.apellido });
     
         setBusySuccess("✅ OK");
         setTimeout(()=> hideBusy(), 450);
@@ -1278,12 +1278,13 @@ paintUserBar_({ usuario:j.usuario, nombre:j.nombre, apellido:j.apellido });
       try{
         if (getToken()){
           userBarEl.style.display = "flex";
-  paintUserBar_(getUserCache_()); // <-- muestra algo al instante
+          paintUserBar_(getUserCache_()); // <-- muestra algo al instante
+          showApp_();
           showBusy("CARGANDO SESIÓN...");
           await whoAmI_();
           setBusySuccess("✅ OK");
           setTimeout(()=> hideBusy(), 300);
-          showApp_();
+          
         }else{
           showLogin_();
         }
@@ -1296,6 +1297,7 @@ paintUserBar_({ usuario:j.usuario, nombre:j.nombre, apellido:j.apellido });
   </script>
 </body>
 </html>
+
 
 
 
