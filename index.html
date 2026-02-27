@@ -21,6 +21,36 @@
     body{margin:0;background:var(--bg);font-family:Arial,sans-serif;color:var(--text);text-transform:uppercase}
     .wrap{max-width:560px;margin:0 auto;padding:16px}
 
+    /* top user bar */
+    .userBar{
+      display:none;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+    }
+    .userChip{
+      flex:1;
+      background:#fff;
+      border:2px solid rgba(11,45,92,.14);
+      border-radius:14px;
+      padding:10px 12px;
+      box-shadow:var(--shadow);
+      font-weight:900;
+      letter-spacing:.4px;
+    }
+    .logoutBtn{
+      width:auto;
+      padding:10px 12px;
+      border-radius:14px;
+      border:2px solid rgba(176,0,32,.30);
+      color:#B00020;
+      background:#fff;
+      font-weight:900;
+      cursor:pointer;
+      box-shadow:none;
+    }
+
     .header{
       background:linear-gradient(135deg,var(--brand),var(--brand2));
       color:#fff;border-radius:var(--radius);
@@ -53,6 +83,9 @@
     }
     .btn[disabled]{opacity:.45;cursor:not-allowed;box-shadow:none}
 
+    .navBlocks{display:flex;flex-direction:column;gap:10px;margin-top:0;}
+    .navBlocks button{margin-top:0;width:100%;}
+
     .camWrap{
       display:none;margin-top:12px;border-radius:var(--radius);overflow:hidden;
       border:2px solid var(--border);background:#000
@@ -72,10 +105,6 @@
     .topActions{display:flex;gap:10px;margin-top:12px}
     .topActions button{flex:1}
 
-    /* NAV: BLOQUES INDEPENDIENTES */
-    .navBlocks{display:flex;flex-direction:column;gap:10px;margin-top:0;}
-    .navBlocks button{margin-top:0;width:100%;}
-
     .filterRow{display:flex;gap:10px;margin-top:12px}
     .filterRow > *{flex:1}
 
@@ -93,10 +122,10 @@
     .liTop{display:flex;justify-content:space-between;gap:10px;font-weight:900}
     .liSub{margin-top:6px;color:var(--muted);font-weight:800;font-size:12px;line-height:1.35}
 
-    /* PRODUCTOS: NUEVO LAYOUT */
+    /* PRODUCTOS layout */
     .prodItem{
       display:grid;
-      grid-template-columns: 1fr 110px;
+      grid-template-columns: 1fr 120px;
       gap:10px;
       align-items:center;
     }
@@ -113,7 +142,7 @@
 
     ::placeholder{color:rgba(11,45,92,.45)}
 
-    /* ===== POPUP BUSY ===== */
+    /* popup busy */
     .busyModal{
       position:fixed;
       inset:0;
@@ -157,50 +186,27 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .busyCheck{
-      width:44px;height:44px;
-      margin:0 auto;
-      display:none;
-    }
-    .busyCheck svg{ width:44px;height:44px;display:block; }
+    .busyCheck{width:44px;height:44px;margin:0 auto;display:none;}
+    .busyCheck svg{width:44px;height:44px;display:block;}
     .busyCheckCircle{
-      fill:none;
-      stroke:rgba(255,255,255,.95);
-      stroke-width:4;
-      stroke-linecap:round;
-      stroke-dasharray:140;
-      stroke-dashoffset:140;
-      animation:drawCircle .42s ease forwards;
+      fill:none;stroke:rgba(255,255,255,.95);stroke-width:4;stroke-linecap:round;
+      stroke-dasharray:140;stroke-dashoffset:140;animation:drawCircle .42s ease forwards;
     }
     .busyCheckMark{
-      fill:none;
-      stroke:rgba(255,255,255,.95);
-      stroke-width:5;
-      stroke-linecap:round;
-      stroke-linejoin:round;
-      stroke-dasharray:60;
-      stroke-dashoffset:60;
-      animation:drawCheck .35s ease .18s forwards;
+      fill:none;stroke:rgba(255,255,255,.95);stroke-width:5;stroke-linecap:round;stroke-linejoin:round;
+      stroke-dasharray:60;stroke-dashoffset:60;animation:drawCheck .35s ease .18s forwards;
     }
     @keyframes drawCircle{ to{stroke-dashoffset:0} }
     @keyframes drawCheck{ to{stroke-dashoffset:0} }
 
-    .busyBox.success{
-      background:linear-gradient(135deg,#0F7A3A,#1BB15F);
-      border-color:#0F7A3A;
-      color:#fff;
-    }
-    .busyBox.success .busyText{ color:#fff; }
-    .busyBox.success .busySpinner{ display:none; }
-    .busyBox.success .busyCheck{ display:block; }
+    .busyBox.success{background:linear-gradient(135deg,#0F7A3A,#1BB15F);border-color:#0F7A3A;color:#fff;}
+    .busyBox.success .busyText{color:#fff;}
+    .busyBox.success .busySpinner{display:none;}
+    .busyBox.success .busyCheck{display:block;}
 
-    .busyBox.error{
-      background:linear-gradient(135deg,#B00020,#E0354F);
-      border-color:#B00020;
-      color:#fff;
-    }
-    .busyBox.error .busyText{ color:#fff; }
-    .busyBox.error .busySpinner{ display:none; }
+    .busyBox.error{background:linear-gradient(135deg,#B00020,#E0354F);border-color:#B00020;color:#fff;}
+    .busyBox.error .busyText{color:#fff;}
+    .busyBox.error .busySpinner{display:none;}
 
     .adjustMode{
       border-color: rgba(15,122,58,.55) !important;
@@ -211,6 +217,13 @@
 
 <body>
   <div class="wrap">
+
+    <!-- USER BAR -->
+    <div id="userBar" class="userBar">
+      <div id="userChip" class="userChip">👤</div>
+      <button id="btnLogout" class="logoutBtn" type="button">🚪 CERRAR SESIÓN</button>
+    </div>
+
     <div class="header">
       <div>
         <div class="brandTitle">PUBLICARTEL</div>
@@ -219,8 +232,20 @@
       <div style="font-weight:900;opacity:.95;font-size:12px;letter-spacing:.5px;">STOCK</div>
     </div>
 
+    <!-- SCREEN: LOGIN -->
+    <div id="screenLogin" class="card" style="display:none;">
+      <label>USUARIO</label>
+      <input id="loginUsuario" placeholder="INGRESE USUARIO" autocomplete="username" />
+
+      <label>CLAVE</label>
+      <input id="loginClave" placeholder="INGRESE CLAVE" type="password" autocomplete="current-password" />
+
+      <button id="btnLogin" type="button" class="btn">✅ INICIAR SESIÓN</button>
+      <div id="loginMsg" class="msg"></div>
+    </div>
+
     <!-- SCREEN: FORM -->
-    <div id="screenForm" class="card">
+    <div id="screenForm" class="card" style="display:none;">
       <div class="navBlocks">
         <button id="btnVerMovs" type="button" class="btn-secondary">📋 MOVIMIENTOS</button>
         <button id="btnAddProd" type="button" class="btn-secondary">➕ NUEVO PRODUCTO</button>
@@ -273,7 +298,7 @@
           <option value="ENTRADA">ENTRADA</option>
           <option value="SALIDA">SALIDA</option>
         </select>
-        <input id="fQ" placeholder="BUSCAR (SKU / PROD / OBS)" />
+        <input id="fQ" placeholder="BUSCAR (SKU / PROD / OBS / USUARIO)" />
       </div>
 
       <div class="filterRow">
@@ -346,27 +371,43 @@
 
   <script>
     // ===== CONFIG =====
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwTBNq8JFmUIRQalBm8U-AtGaYF9wjyUVYysfUVUSFlYarlSVbexYPaURqbewaBwqgO/exec";
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbydj9DjLAavuTV2KtNIW__pioG01-a4N9XDhEhlL9mhWai_RWj4pAZJEP4pCr4a21Jf/exec";
     const SECRET = "PUBLI_2026_Stock!";
     const REQUIRED_SAME_READS = 2;
 
+    // ===== STORAGE KEYS =====
+    const LS_TOKEN = "PUBLI_TOKEN";
+    const LS_NAME  = "PUBLI_NAME";   // "NOMBRE APELLIDO"
+    const LS_USER  = "PUBLI_USER";   // usuario login
+
     // ===== DOM =====
+    const userBarEl  = document.getElementById("userBar");
+    const userChipEl = document.getElementById("userChip");
+    const btnLogout  = document.getElementById("btnLogout");
+
     const busyModalEl = document.getElementById("busyModal");
     const busyBoxEl = document.getElementById("busyBox");
     const busyTextEl = document.getElementById("busyText");
 
+    const screenLogin = document.getElementById("screenLogin");
     const screenForm = document.getElementById("screenForm");
     const screenList = document.getElementById("screenList");
     const screenAdd  = document.getElementById("screenAdd");
     const screenProductos = document.getElementById("screenProductos");
 
+    const loginUsuarioEl = document.getElementById("loginUsuario");
+    const loginClaveEl = document.getElementById("loginClave");
+    const btnLogin = document.getElementById("btnLogin");
+    const loginMsgEl = document.getElementById("loginMsg");
+
     const videoEl = document.getElementById("video");
     const camWrapEl = document.getElementById("camWrap");
-
     const videoAddEl = document.getElementById("videoAdd");
     const camWrapAddEl = document.getElementById("camWrapAdd");
 
     const btnScan = document.getElementById("btnScan");
+    const btnScanAdd = document.getElementById("btnScanAdd");
+
     const btnGuardar = document.getElementById("btnGuardar");
     const btnVerMovs = document.getElementById("btnVerMovs");
     const btnAddProd = document.getElementById("btnAddProd");
@@ -394,7 +435,6 @@
 
     // add product
     const btnBackAdd = document.getElementById("btnBackAdd");
-    const btnScanAdd = document.getElementById("btnScanAdd");
     const addBarcodeEl = document.getElementById("add_barcode");
     const addSkuEl = document.getElementById("add_sku");
     const addDescEl = document.getElementById("add_desc");
@@ -414,7 +454,6 @@
     let currentProducto = null;
     let currentBarcode = "";
     let currentStock = null;
-
     const memLookup = new Map();
 
     // scanner
@@ -426,13 +465,14 @@
     let sameCount = 0;
     let scanTarget = "MOV";
 
-    // popup mínimo visible
+    // busy
     let busyShownAt = 0;
     const BUSY_MIN_MS = 250;
 
     // catálogo cache
     let catalogCache = [];
 
+    // ===== HELPERS UI =====
     function resetBusyStyle(){ busyBoxEl.classList.remove("success","error"); }
     function popBusy(){
       busyBoxEl.classList.remove("pop");
@@ -442,7 +482,7 @@
     function showBusy(text="PROCESANDO..."){
       busyShownAt = Date.now();
       resetBusyStyle();
-      busyTextEl.textContent = (text||"").toString().toUpperCase();
+      busyTextEl.textContent = String(text||"").toUpperCase();
       busyModalEl.style.display = "flex";
       popBusy();
     }
@@ -454,7 +494,7 @@
         resetBusyStyle();
       }, wait);
     }
-    function setBusyText(text=""){ busyTextEl.textContent = (text||"").toString().toUpperCase(); }
+    function setBusyText(text=""){ busyTextEl.textContent = String(text||"").toUpperCase(); }
     function setBusySuccess(text="✅ OK"){
       busyBoxEl.classList.add("success");
       setBusyText(text);
@@ -468,21 +508,38 @@
       navigator.vibrate?.(120);
     }
 
-    function setMsg(t="", err=false){
-      msgEl.className = "msg" + (err ? " err" : "");
-      msgEl.textContent = (t||"").toString().toUpperCase();
+    function setMsg(t="", err=false){ msgEl.className = "msg" + (err ? " err":""); msgEl.textContent = String(t||"").toUpperCase(); }
+    function setLoginMsg(t="", err=false){ loginMsgEl.className = "msg" + (err ? " err":""); loginMsgEl.textContent = String(t||"").toUpperCase(); }
+    function setListMsg(t="", err=false){ listMsgEl.className = "msg" + (err ? " err":""); listMsgEl.textContent = String(t||"").toUpperCase(); }
+    function setAddMsg(t="", err=false){ addMsgEl.className = "msg" + (err ? " err":""); addMsgEl.textContent = String(t||"").toUpperCase(); }
+    function setProdMsg(t="", err=false){ prodMsgEl.className = "msg" + (err ? " err":""); prodMsgEl.textContent = String(t||"").toUpperCase(); }
+
+    function showOnly(screen){
+      screenLogin.style.display = (screen === "LOGIN") ? "block" : "none";
+      screenForm.style.display = (screen === "FORM") ? "block" : "none";
+      screenList.style.display = (screen === "LIST") ? "block" : "none";
+      screenAdd.style.display = (screen === "ADD") ? "block" : "none";
+      screenProductos.style.display = (screen === "PRODUCTOS") ? "block" : "none";
     }
-    function setListMsg(t="", err=false){
-      listMsgEl.className = "msg" + (err ? " err" : "");
-      listMsgEl.textContent = (t||"").toString().toUpperCase();
+
+    function setUserBarVisible_(visible){
+      userBarEl.style.display = visible ? "flex" : "none";
     }
-    function setAddMsg(t="", err=false){
-      addMsgEl.className = "msg" + (err ? " err" : "");
-      addMsgEl.textContent = (t||"").toString().toUpperCase();
+
+    function setUserChip_(nombreApellido){
+      userChipEl.textContent = ("👤 " + String(nombreApellido||"")).toUpperCase();
     }
-    function setProdMsg(t="", err=false){
-      prodMsgEl.className = "msg" + (err ? " err" : "");
-      prodMsgEl.textContent = (t||"").toString().toUpperCase();
+
+    function getToken_(){ return localStorage.getItem(LS_TOKEN) || ""; }
+    function setSession_(token, usuario, nombre, apellido){
+      localStorage.setItem(LS_TOKEN, token);
+      localStorage.setItem(LS_USER, usuario || "");
+      localStorage.setItem(LS_NAME, ((nombre||"") + " " + (apellido||"")).trim());
+    }
+    function clearSession_(){
+      localStorage.removeItem(LS_TOKEN);
+      localStorage.removeItem(LS_USER);
+      localStorage.removeItem(LS_NAME);
     }
 
     function resetTipoYcantidadUI_(){
@@ -510,24 +567,137 @@
 
       const line1 = `PRODUCTO: ${producto.descripcion||"-"} | SKU: ${producto.sku||"-"}`;
       const line2 = (typeof stock === "number") ? `STOCK ACTUAL: ${stock}` : `STOCK ACTUAL: ...`;
-
       productoEl.innerHTML = `<div>${line1}</div><div class="line2">${line2}</div>`;
       productoEl.style.display = "block";
       btnGuardar.disabled = false;
     }
 
+    // ===== API =====
     async function apiGet_(params){
-      const url = `${APPS_SCRIPT_URL}?` + new URLSearchParams(params).toString();
+      const token = getToken_();
+      const url = `${APPS_SCRIPT_URL}?` + new URLSearchParams({ ...params, secret: SECRET, token }).toString();
       const res = await fetch(url, { cache:"no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const j = await res.json();
       if (!j.ok) throw new Error(j.error || "ERROR");
       return j;
     }
-    async function fetchLookup(barcode){ return await apiGet_({ action:"lookup", secret:SECRET, barcode }); }
-    async function catFind(barcode){ return await apiGet_({ action:"catfind", secret:SECRET, barcode }); }
-    async function fetchCatalog_(){ return await apiGet_({ action:"catalog", secret:SECRET }); }
 
+    async function apiLogin_(usuario, clave){
+      const url = `${APPS_SCRIPT_URL}?` + new URLSearchParams({
+        action:"login",
+        secret: SECRET,
+        usuario,
+        clave
+      }).toString();
+
+      const res = await fetch(url, { cache:"no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const j = await res.json();
+      if (!j.ok) throw new Error(j.error || "ERROR");
+      return j;
+    }
+
+    async function apiLogout_(){
+      const token = getToken_();
+      if (!token) return;
+      const url = `${APPS_SCRIPT_URL}?` + new URLSearchParams({
+        action:"logout",
+        secret: SECRET,
+        token
+      }).toString();
+      try{ await fetch(url, { cache:"no-store" }); }catch{}
+    }
+
+    async function apiMe_(){
+      return await apiGet_({ action:"me" });
+    }
+
+    async function fetchLookup(barcode){
+      return await apiGet_({ action:"lookup", barcode });
+    }
+    async function catFind(barcode){
+      return await apiGet_({ action:"catfind", barcode });
+    }
+    async function fetchCatalog_(){
+      return await apiGet_({ action:"catalog" });
+    }
+
+    // ===== LOGIN FLOW =====
+    async function enterApp_(){
+      // valida session actual
+      const token = getToken_();
+      if (!token){
+        setUserBarVisible_(false);
+        showOnly("LOGIN");
+        loginUsuarioEl.focus();
+        return;
+      }
+
+      showBusy("VALIDANDO SESIÓN...");
+      try{
+        const me = await apiMe_();
+        const full = ((me.nombre||"") + " " + (me.apellido||"")).trim();
+        setUserChip_(full || localStorage.getItem(LS_NAME) || "USUARIO");
+        setUserBarVisible_(true);
+        showOnly("FORM");
+        setBusySuccess("✅ OK");
+        setTimeout(()=> hideBusy(), 250);
+      }catch(e){
+        clearSession_();
+        setUserBarVisible_(false);
+        showOnly("LOGIN");
+        setBusyError("❌ SESIÓN");
+        setTimeout(()=> hideBusy(), 450);
+      }
+    }
+
+    async function doLogin_(){
+      const usuario = String(loginUsuarioEl.value||"").trim();
+      const clave = String(loginClaveEl.value||"").trim();
+      if (!usuario || !clave){
+        setLoginMsg("FALTAN DATOS", true);
+        return;
+      }
+
+      setLoginMsg("", false);
+      showBusy("INICIANDO SESIÓN...");
+      try{
+        const j = await apiLogin_(usuario, clave);
+        setSession_(j.token, j.usuario, j.nombre, j.apellido);
+
+        setUserChip_((j.nombre + " " + j.apellido).trim());
+        setUserBarVisible_(true);
+
+        loginClaveEl.value = "";
+        setLoginMsg("", false);
+
+        setBusySuccess("✅ BIENVENIDO");
+        setTimeout(()=> hideBusy(), 350);
+
+        showOnly("FORM");
+      }catch(e){
+        setBusyError("❌ ERROR");
+        setTimeout(()=> hideBusy(), 650);
+        setLoginMsg(e.message || e, true);
+      }
+    }
+
+    async function doLogoutAndGoLogin_(){
+      stopScan();
+      showBusy("CERRANDO SESIÓN...");
+      try{
+        await apiLogout_();
+      }catch{}
+      clearSession_();
+      setUserBarVisible_(false);
+      setBusySuccess("✅ LISTO");
+      setTimeout(()=> hideBusy(), 300);
+      showOnly("LOGIN");
+      loginUsuarioEl.focus();
+    }
+
+    // ===== MOVIMIENTOS =====
     async function handleBarcode_MOV(code){
       const clean = String(code||"").trim();
       if (!clean) return;
@@ -554,7 +724,6 @@
         const j = await fetchLookup(clean);
         const producto = { sku: j.sku, descripcion: j.descripcion };
         const stock = Number(j.stock || 0);
-
         memLookup.set(clean, { sku: producto.sku, descripcion: producto.descripcion, stock, t: Date.now() });
 
         setProducto(producto, clean, stock);
@@ -683,6 +852,7 @@
 
       const data = {
         secret: SECRET,
+        token: getToken_(),
         action: "move",
         orden,
         tipo_mov,
@@ -690,8 +860,7 @@
         cantidad,
         observacion,
         sku: currentProducto.sku,
-        descripcion: currentProducto.descripcion,
-        usuario:""
+        descripcion: currentProducto.descripcion
       };
 
       try{
@@ -721,6 +890,7 @@
       }
     }
 
+    // ===== MOVIMIENTOS LIST =====
     function fmtFecha(iso){
       try{
         const d = new Date(iso);
@@ -756,7 +926,6 @@
       try{
         const j = await apiGet_({
           action:"list",
-          secret:SECRET,
           limit:"160",
           tipo,
           q,
@@ -781,13 +950,14 @@
           const prod = String(it.descripcion||"");
           const cant = Number(it.cantidad||0);
           const obs = String(it.observacion||"");
+          const usr = String(it.usuario||"");
 
           const div = document.createElement("div");
           div.className = "listItem " + classifyMov_(it);
           div.innerHTML = `
             <div class="liTop"><div>${fecha}</div><div>${tipoMov}</div></div>
             <div class="liSub">${prod}</div>
-            <div class="liSub">CANTIDAD: ${cant}${obs ? " | OBS: " + obs : ""}</div>
+            <div class="liSub">CANTIDAD: ${cant}${usr ? " | USUARIO: " + usr : ""}${obs ? " | OBS: " + obs : ""}</div>
           `;
           listContainer.appendChild(div);
         }
@@ -798,60 +968,6 @@
         setBusyError("❌ NO SE PUDO");
         setTimeout(()=> hideBusy(), 650);
         setListMsg(("NO SE PUDO CARGAR: " + (e.message||e)), true);
-      }
-    }
-
-    function clearAddForm_(){
-      addBarcodeEl.value = "";
-      addSkuEl.value = "";
-      addDescEl.value = "";
-      setAddMsg("", false);
-      productoAddHintEl.style.display = "none";
-      productoAddHintEl.innerHTML = "";
-    }
-
-    async function guardarProducto_(){
-      const barcode = String(addBarcodeEl.value||"").trim();
-      const sku = String(addSkuEl.value||"").trim().toUpperCase();
-      const descripcion = String(addDescEl.value||"").trim().toUpperCase();
-
-      if (!barcode || !sku || !descripcion){
-        setAddMsg("FALTAN DATOS", true);
-        return;
-      }
-
-      btnGuardarProd.disabled = true;
-
-      const data = {
-        action: "add_product",
-        secret: SECRET,
-        barcode,
-        sku,
-        descripcion
-      };
-
-      try{
-        showBusy("GUARDANDO PRODUCTO...");
-
-        await fetch(APPS_SCRIPT_URL, {
-          method:"POST",
-          mode:"no-cors",
-          headers:{ "Content-Type":"application/json" },
-          body: JSON.stringify(data)
-        });
-
-        setBusySuccess("✅ PRODUCTO GUARDADO");
-        setTimeout(()=> hideBusy(), 700);
-
-        setAddMsg("", false);
-        clearAddForm_();
-        catalogCache = [];
-      }catch(e){
-        setBusyError("❌ ERROR");
-        setTimeout(()=> hideBusy(), 900);
-        setAddMsg("ERROR AL GUARDAR", true);
-      }finally{
-        btnGuardarProd.disabled = false;
       }
     }
 
@@ -909,15 +1025,68 @@
 
     function filtrarCatalogo_(){
       const q = String(pQEl.value||"").trim().toUpperCase();
-      if (!q){
-        renderCatalog_(catalogCache);
-        return;
-      }
+      if (!q){ renderCatalog_(catalogCache); return; }
       const out = catalogCache.filter(it => {
         const blob = `${it.barcode||""} ${it.sku||""} ${it.descripcion||""}`.toUpperCase();
         return blob.includes(q);
       });
       renderCatalog_(out);
+    }
+
+    // ===== AGREGAR PRODUCTO =====
+    function clearAddForm_(){
+      addBarcodeEl.value = "";
+      addSkuEl.value = "";
+      addDescEl.value = "";
+      setAddMsg("", false);
+      productoAddHintEl.style.display = "none";
+      productoAddHintEl.innerHTML = "";
+    }
+
+    async function guardarProducto_(){
+      const barcode = String(addBarcodeEl.value||"").trim();
+      const sku = String(addSkuEl.value||"").trim().toUpperCase();
+      const descripcion = String(addDescEl.value||"").trim().toUpperCase();
+
+      if (!barcode || !sku || !descripcion){
+        setAddMsg("FALTAN DATOS", true);
+        return;
+      }
+
+      btnGuardarProd.disabled = true;
+
+      const data = {
+        action: "add_product",
+        secret: SECRET,
+        token: getToken_(),
+        barcode,
+        sku,
+        descripcion
+      };
+
+      try{
+        showBusy("GUARDANDO PRODUCTO...");
+
+        await fetch(APPS_SCRIPT_URL, {
+          method:"POST",
+          mode:"no-cors",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify(data)
+        });
+
+        setBusySuccess("✅ PRODUCTO GUARDADO");
+        setTimeout(()=> hideBusy(), 700);
+
+        setAddMsg("", false);
+        clearAddForm_();
+        catalogCache = [];
+      }catch(e){
+        setBusyError("❌ ERROR");
+        setTimeout(()=> hideBusy(), 900);
+        setAddMsg("ERROR AL GUARDAR", true);
+      }finally{
+        btnGuardarProd.disabled = false;
+      }
     }
 
     // ===== SCANNER =====
@@ -929,12 +1098,10 @@
 
     async function startCamera(){
       const targetVideo = (scanTarget === "ADD") ? videoAddEl : videoEl;
-
       stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode:{ideal:"environment"}, width:{ideal:1280}, height:{ideal:720} },
         audio:false
       });
-
       targetVideo.srcObject = stream;
       await targetVideo.play();
     }
@@ -958,7 +1125,6 @@
           if (code){
             if (code === lastCode) sameCount++;
             else { lastCode=code; sameCount=1; }
-
             if (sameCount >= REQUIRED_SAME_READS){
               stopScan();
               if (scanTarget === "ADD") await handleBarcode_ADD(code);
@@ -973,10 +1139,8 @@
 
     async function startScan(){
       if (scanning) return;
-
       scanning = true;
-      lastCode="";
-      sameCount=0;
+      lastCode=""; sameCount=0;
 
       try{
         await initDetector();
@@ -989,10 +1153,8 @@
         camWrapEl.style.display="none";
         camWrapAddEl.style.display="none";
         stopCamera();
-
         btnScan.textContent = "📷 ESCANEAR";
         btnScanAdd.textContent = "📷 ESCANEAR";
-
         if (scanTarget === "ADD") setAddMsg("ERROR DE CÁMARA / PERMISOS", true);
         else setMsg("ERROR DE CÁMARA / PERMISOS", true);
       }
@@ -1003,16 +1165,12 @@
       stopCamera();
       camWrapEl.style.display="none";
       camWrapAddEl.style.display="none";
-
       btnScan.textContent = "📷 ESCANEAR";
       btnScanAdd.textContent = "📷 ESCANEAR";
     }
 
     function toggleScan(target){
-      if (scanning){
-        stopScan();
-        return;
-      }
+      if (scanning){ stopScan(); return; }
       scanTarget = target;
       startScan();
       btnScan.textContent = "🛑 DETENER";
@@ -1020,6 +1178,10 @@
     }
 
     // ===== EVENTS =====
+    btnLogin.addEventListener("click", doLogin_);
+    loginClaveEl.addEventListener("keydown", (e)=>{ if (e.key === "Enter") doLogin_(); });
+    btnLogout.addEventListener("click", doLogoutAndGoLogin_);
+
     btnScan.addEventListener("click", ()=> toggleScan("MOV"));
     btnScanAdd.addEventListener("click", ()=> toggleScan("ADD"));
 
@@ -1027,83 +1189,68 @@
     ordenEl.addEventListener("blur", ()=> { if (!ordenEl.value.trim()) ordenEl.value = "0"; });
 
     tipoMovEl.addEventListener("change", onTipoChange_);
-
     barcodeEl.addEventListener("change", async ()=>{ await handleBarcode_MOV(barcodeEl.value); });
     addBarcodeEl.addEventListener("change", async ()=>{ await handleBarcode_ADD(addBarcodeEl.value); });
 
     btnGuardar.addEventListener("click", guardarMovimiento);
+    btnGuardarProd.addEventListener("click", guardarProducto_);
 
     btnVerMovs.addEventListener("click", async ()=>{
       stopScan();
-      screenForm.style.display="none";
-      screenAdd.style.display="none";
-      screenProductos.style.display="none";
-      screenList.style.display="block";
-      await cargarMovimientos(); // popup incluido
+      showOnly("LIST");
+      await cargarMovimientos();
     });
-
-    btnRefrescar.addEventListener("click", cargarMovimientos);
-    btnAplicarFiltros.addEventListener("click", cargarMovimientos);
 
     btnAddProd.addEventListener("click", ()=>{
       stopScan();
-      screenForm.style.display="none";
-      screenList.style.display="none";
-      screenProductos.style.display="none";
-      screenAdd.style.display="block";
+      showOnly("ADD");
       clearAddForm_();
       scanTarget = "ADD";
     });
 
-    btnBackAdd.addEventListener("click", ()=>{
-      stopScan();
-      screenAdd.style.display="none";
-      screenList.style.display="none";
-      screenProductos.style.display="none";
-      screenForm.style.display="block";
-      scanTarget = "MOV";
-    });
-
     btnProductos.addEventListener("click", async ()=>{
       stopScan();
-      screenForm.style.display="none";
-      screenList.style.display="none";
-      screenAdd.style.display="none";
-      screenProductos.style.display="block";
-      await cargarCatalogoPantalla_(); // popup incluido
+      showOnly("PRODUCTOS");
+      await cargarCatalogoPantalla_();
     });
-
-    btnRefrescarProd.addEventListener("click", cargarCatalogoPantalla_);
-    btnBuscarProd.addEventListener("click", filtrarCatalogo_);
-    pQEl.addEventListener("keydown", (e)=>{ if (e.key === "Enter") filtrarCatalogo_(); });
 
     btnVolver.addEventListener("click", ()=>{
       stopScan();
-      screenList.style.display="none";
-      screenAdd.style.display="none";
-      screenProductos.style.display="none";
-      screenForm.style.display="block";
+      showOnly("FORM");
+      scanTarget = "MOV";
+    });
+
+    btnBackAdd.addEventListener("click", ()=>{
+      stopScan();
+      showOnly("FORM");
       scanTarget = "MOV";
     });
 
     btnVolverProd.addEventListener("click", ()=>{
       stopScan();
-      screenProductos.style.display="none";
-      screenList.style.display="none";
-      screenAdd.style.display="none";
-      screenForm.style.display="block";
+      showOnly("FORM");
       scanTarget = "MOV";
     });
 
-    btnGuardarProd.addEventListener("click", guardarProducto_);
+    btnRefrescar.addEventListener("click", cargarMovimientos);
+    btnAplicarFiltros.addEventListener("click", cargarMovimientos);
+
+    btnRefrescarProd.addEventListener("click", cargarCatalogoPantalla_);
+    btnBuscarProd.addEventListener("click", filtrarCatalogo_);
+    pQEl.addEventListener("keydown", (e)=>{ if (e.key === "Enter") filtrarCatalogo_(); });
 
     // INIT
-    ordenEl.value = "0";
-    setProducto(null,"",null);
-    resetTipoYcantidadUI_();
-    setMsg("", false);
-    setListMsg("", false);
-    setProdMsg("", false);
+    (async function init(){
+      resetOrden_();
+      setProducto(null,"",null);
+      resetTipoYcantidadUI_();
+      setMsg("", false);
+      setLoginMsg("", false);
+      setListMsg("", false);
+      setProdMsg("", false);
+      setAddMsg("", false);
+      await enterApp_();
+    })();
   </script>
 </body>
 </html>
