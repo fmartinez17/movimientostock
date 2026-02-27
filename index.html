@@ -905,7 +905,7 @@
           ? `SE DAN DE ALTA ${Math.abs(diff)}`
           : `SE DAN DE BAJA ${Math.abs(diff)}`;
         
-        const audit = `OBS: AJUSTE AUTOMÁTICO | STOCK REAL: ${stockReal} | SISTEMA: ${currentStock} | ${altaBaja}`;
+        const audit = `STOCK REAL: ${stockReal} | STOCK SISTEMA: ${currentStock} | ${altaBaja}`;
         observacion = obsUser ? (audit + " | " + obsUser) : audit;
       }else{
         if (!cantidadRaw || isNaN(cantidad) || cantidad <= 0){
@@ -961,46 +961,49 @@
     }
 
     function normalizeObsForAjuste_(obsRaw, tipoMov){
-  const obs = String(obsRaw || "").trim();
-  if (!obs) return "";
+  const up = String(obsRaw || "").toUpperCase();
 
-  const up = obs.toUpperCase();
-  if (!up.includes("AJUSTE")) return `OBS: ${obs}`;
+  // Solo procesamos si es ajuste
+  if (!up.includes("AJUSTE")) return "";
 
   // STOCK REAL
-  const mReal = up.match(/STOCK\s*REAL\s*:\s*(\d+)/i);
+  const mReal = up.match(/STOCK\s*REAL\s*:\s*(\d+)/);
 
-  // SISTEMA puede venir como "SISTEMA:" o "STOCK SISTEMA:"
+  // STOCK SISTEMA (puede venir como "STOCK SISTEMA:" o "SISTEMA:")
   const mSis =
-    up.match(/\bSISTEMA\s*:\s*(\d+)/i) ||
-    up.match(/STOCK\s*SISTEMA\s*:\s*(\d+)/i) ||
-    up.match(/STOCK\s*DEL\s*SISTEMA\s*:\s*(\d+)/i);
+    up.match(/STOCK\s*SISTEMA\s*:\s*(\d+)/) ||
+    up.match(/\bSISTEMA\s*:\s*(\d+)/) ||
+    up.match(/STOCK\s*DEL\s*SISTEMA\s*:\s*(\d+)/);
 
-  // DIF puede venir como DIF:-23 / DIF: -23 / DIFERENCIA:-23
-  const mDif =
-    up.match(/\bDIF(?:ERENCIA)?\s*:\s*(-?\d+)/i);
+  if (!mReal || !mSis) return "";
 
-  // Soporta también "SE DIERON DE ALTA/BAJA: N"
-  const mAlta = up.match(/SE\s*DIERON\s*DE\s*ALTA\s*:?\s*(\d+)/i);
-  const mBaja = up.match(/SE\s*DIERON\s*DE\s*BAJA\s*:?\s*(\d+)/i);
+  const stockReal = Number(mReal[1]);
+  const sistema   = Number(mSis[1]);
 
-  const stockReal = mReal ? Number(mReal[1]) : null;
-  const sistema   = mSis  ? Number(mSis[1])  : null;
+  // Caso A: viene "SE DAN DE BAJA 23" / "SE DAN DE ALTA 27"
+  const mBaja = up.match(/SE\s*DAN\s*DE\s*BAJA\s*(\d+)/);
+  const mAlta = up.match(/SE\s*DAN\s*DE\s*ALTA\s*(\d+)/);
 
-  // Si no podemos leer números clave, devolvemos obs original con OBS:
-  if (stockReal == null || sistema == null) return `OBS: ${obs}`;
+  // Caso B: viene DIF:-23 / DIF: 27 / DIFERENCIA:-23
+  const mDif = up.match(/\bDIF(?:ERENCIA)?\s*:\s*(-?\d+)/);
 
-  // 1) Si viene DIF, manda
-  if (mDif){
+  let linea2 = "";
+
+  if (mBaja) linea2 = `SE DAN DE BAJA ${mBaja[1]}`;
+  else if (mAlta) linea2 = `SE DAN DE ALTA ${mAlta[1]}`;
+  else if (mDif){
     const diff = Number(mDif[1]);
-    if (diff === 0) return `OBS: AJUSTE AUTOMÁTICO | STOCK REAL: ${stockReal} | SISTEMA: ${sistema} | SIN DIFERENCIA`;
-
-    const altaBaja = diff > 0
-      ? `SE DAN DE ALTA ${Math.abs(diff)}`
-      : `SE DAN DE BAJA ${Math.abs(diff)}`;
-
-    return `OBS: AJUSTE AUTOMÁTICO | STOCK REAL: ${stockReal} | SISTEMA: ${sistema} | ${altaBaja}`;
+    if (diff > 0) linea2 = `SE DAN DE ALTA ${Math.abs(diff)}`;
+    else if (diff < 0) linea2 = `SE DAN DE BAJA ${Math.abs(diff)}`;
+    else linea2 = `SIN DIFERENCIA`;
+  } else {
+    // fallback por tipo_mov
+    const t = String(tipoMov || "").toUpperCase();
+    linea2 = (t === "ENTRADA") ? "SE DAN DE ALTA" : "SE DAN DE BAJA";
   }
+
+  return `STOCK REAL: ${stockReal} | STOCK SISTEMA: ${sistema}<br>${linea2}`;
+}
 
   // 2) Si no hay DIF pero hay "SE DIERON..."
   const t = String(tipoMov || "").toUpperCase();
@@ -1373,6 +1376,7 @@ function fmtUsuario_(u){
   </script>
 </body>
 </html>
+
 
 
 
