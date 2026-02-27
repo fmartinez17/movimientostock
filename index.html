@@ -488,6 +488,20 @@
     const prodsMsgEl = document.getElementById("prodsMsg");
     const prodsContainer = document.getElementById("prodsContainer");
 
+    const LS_USER = "publi_stock_user";
+
+    function setUserCache_(u){
+      localStorage.setItem(LS_USER, JSON.stringify(u || {}));
+    }
+    function getUserCache_(){
+      try{ return JSON.parse(localStorage.getItem(LS_USER) || "{}"); }
+      catch{ return {}; }
+    }
+    function paintUserBar_(u){
+      const full = `${u.nombre||""} ${u.apellido||""}`.trim().toUpperCase();
+      userNameEl.textContent = `👤 ${full || (u.usuario||"") || "USUARIO"}`;
+    }
+
     // ===== STATE =====
     let currentProducto = null;   // { sku, descripcion }
     let currentBarcode = "";
@@ -681,11 +695,11 @@
     }
 
     async function whoAmI_(){
-      const j = await apiGet_({ action:"whoami" });
-      const full = `${j.nombre||""} ${j.apellido||""}`.trim().toUpperCase();
-      userNameEl.textContent = `👤 ${full || (j.usuario||"")}`;
-      return j;
-    }
+  const j = await apiGet_({ action:"whoami" });
+  setUserCache_({ usuario:j.usuario, nombre:j.nombre, apellido:j.apellido });
+  paintUserBar_({ usuario:j.usuario, nombre:j.nombre, apellido:j.apellido });
+  return j;
+}
 
     async function login_(){
       const usuario = String(loginUserEl.value||"").trim().toUpperCase();
@@ -703,6 +717,9 @@
         const j = await apiPost_({ action:"login", usuario, clave });
     
         setToken(j.token || "");
+
+        setUserCache_({ usuario:j.usuario, nombre:j.nombre, apellido:j.apellido });
+paintUserBar_({ usuario:j.usuario, nombre:j.nombre, apellido:j.apellido });
     
         const full = `${j.nombre||""} ${j.apellido||""}`.trim().toUpperCase();
         userNameEl.textContent = `👤 ${full || (j.usuario||"")}`;
@@ -1260,6 +1277,8 @@
     (async ()=>{
       try{
         if (getToken()){
+          userBarEl.style.display = "flex";
+  paintUserBar_(getUserCache_()); // <-- muestra algo al instante
           showBusy("CARGANDO SESIÓN...");
           await whoAmI_();
           setBusySuccess("✅ OK");
@@ -1277,6 +1296,7 @@
   </script>
 </body>
 </html>
+
 
 
 
