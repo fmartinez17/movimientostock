@@ -965,32 +965,54 @@
   if (!obs) return "";
 
   const up = obs.toUpperCase();
-  if (!up.includes("AJUSTE AUTOMÁTICO")) return obs;
+  if (!up.includes("AJUSTE")) return `OBS: ${obs}`;
 
+  // STOCK REAL
   const mReal = up.match(/STOCK\s*REAL\s*:\s*(\d+)/i);
-  const mSis  = up.match(/STOCK\s*SISTEMA\s*:\s*(\d+)/i) || up.match(/STOCK\s*DEL\s*SISTEMA\s*:\s*(\d+)/i);
 
+  // SISTEMA puede venir como "SISTEMA:" o "STOCK SISTEMA:"
+  const mSis =
+    up.match(/\bSISTEMA\s*:\s*(\d+)/i) ||
+    up.match(/STOCK\s*SISTEMA\s*:\s*(\d+)/i) ||
+    up.match(/STOCK\s*DEL\s*SISTEMA\s*:\s*(\d+)/i);
+
+  // DIF puede venir como DIF:-23 / DIF: -23 / DIFERENCIA:-23
+  const mDif =
+    up.match(/\bDIF(?:ERENCIA)?\s*:\s*(-?\d+)/i);
+
+  // Soporta también "SE DIERON DE ALTA/BAJA: N"
   const mAlta = up.match(/SE\s*DIERON\s*DE\s*ALTA\s*:?\s*(\d+)/i);
   const mBaja = up.match(/SE\s*DIERON\s*DE\s*BAJA\s*:?\s*(\d+)/i);
 
-  const stockReal = mReal ? mReal[1] : "";
-  const sistema   = mSis  ? mSis[1]  : "";
+  const stockReal = mReal ? Number(mReal[1]) : null;
+  const sistema   = mSis  ? Number(mSis[1])  : null;
 
-  if (!stockReal || !sistema) return obs;
+  // Si no podemos leer números clave, devolvemos obs original con OBS:
+  if (stockReal == null || sistema == null) return `OBS: ${obs}`;
 
-  const t = String(tipoMov || "").toUpperCase();
-  const isEntrada = t === "ENTRADA";
-  const diff = isEntrada ? (mAlta ? mAlta[1] : "") : (mBaja ? mBaja[1] : "");
+  // 1) Si viene DIF, manda
+  if (mDif){
+    const diff = Number(mDif[1]);
+    if (diff === 0) return `OBS: AJUSTE AUTOMÁTICO | STOCK REAL: ${stockReal} | SISTEMA: ${sistema} | SIN DIFERENCIA`;
 
-  if (!diff){
-    const lastNum = up.match(/(\d+)\s*$/);
-    if (lastNum) {
-      return `OBS: AJUSTE AUTOMÁTICO | STOCK REAL: ${stockReal} | SISTEMA: ${sistema} | ${isEntrada ? "SE DAN DE ALTA" : "SE DAN DE BAJA"} ${lastNum[1]}`;
-    }
-    return obs;
+    const altaBaja = diff > 0
+      ? `SE DAN DE ALTA ${Math.abs(diff)}`
+      : `SE DAN DE BAJA ${Math.abs(diff)}`;
+
+    return `OBS: AJUSTE AUTOMÁTICO | STOCK REAL: ${stockReal} | SISTEMA: ${sistema} | ${altaBaja}`;
   }
 
-  return `OBS: AJUSTE AUTOMÁTICO | STOCK REAL: ${stockReal} | SISTEMA: ${sistema} | ${isEntrada ? "SE DAN DE ALTA" : "SE DAN DE BAJA"} ${diff}`;
+  // 2) Si no hay DIF pero hay "SE DIERON..."
+  const t = String(tipoMov || "").toUpperCase();
+  const isEntrada = t === "ENTRADA";
+
+  const n = isEntrada ? (mAlta ? Number(mAlta[1]) : null) : (mBaja ? Number(mBaja[1]) : null);
+  if (n != null){
+    return `OBS: AJUSTE AUTOMÁTICO | STOCK REAL: ${stockReal} | SISTEMA: ${sistema} | ${isEntrada ? "SE DAN DE ALTA" : "SE DAN DE BAJA"} ${n}`;
+  }
+
+  // fallback
+  return `OBS: AJUSTE AUTOMÁTICO | STOCK REAL: ${stockReal} | SISTEMA: ${sistema}`;
 }
 
 function fmtUsuario_(u){
@@ -1058,9 +1080,11 @@ function fmtUsuario_(u){
 
   div.innerHTML = `
     <div class="liTop"><div>${fecha}</div><div>${tipoMov}</div></div>
-    <div class="liSub">${prod}</div>
-    <div class="liSub">CANTIDAD: ${cant}${usuario ? " | USUARIO: " + usuario : ""}${obsFmt ? " | " + obsFmt : ""}</div>
-  `;
+  <div class="liSub">${prod}</div>
+  <div class="liSub">CANTIDAD: ${cant}</div>
+  ${usuario ? `<div class="liSub">USUARIO: ${usuario}</div>` : ``}
+  ${obsFmt ? `<div class="liSub">${obsFmt}</div>` : ``}
+`;
   listContainer.appendChild(div);
 }
 
@@ -1349,6 +1373,7 @@ function fmtUsuario_(u){
   </script>
 </body>
 </html>
+
 
 
 
