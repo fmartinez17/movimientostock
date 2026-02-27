@@ -960,6 +960,44 @@
       }catch{ return iso; }
     }
 
+    function normalizeObsForAjuste_(obsRaw, tipoMov){
+  const obs = String(obsRaw || "").trim();
+  if (!obs) return "";
+
+  const up = obs.toUpperCase();
+  if (!up.includes("AJUSTE AUTOMÁTICO")) return obs;
+
+  const mReal = up.match(/STOCK\s*REAL\s*:\s*(\d+)/i);
+  const mSis  = up.match(/STOCK\s*SISTEMA\s*:\s*(\d+)/i) || up.match(/STOCK\s*DEL\s*SISTEMA\s*:\s*(\d+)/i);
+
+  const mAlta = up.match(/SE\s*DIERON\s*DE\s*ALTA\s*:?\s*(\d+)/i);
+  const mBaja = up.match(/SE\s*DIERON\s*DE\s*BAJA\s*:?\s*(\d+)/i);
+
+  const stockReal = mReal ? mReal[1] : "";
+  const sistema   = mSis  ? mSis[1]  : "";
+
+  if (!stockReal || !sistema) return obs;
+
+  const t = String(tipoMov || "").toUpperCase();
+  const isEntrada = t === "ENTRADA";
+  const diff = isEntrada ? (mAlta ? mAlta[1] : "") : (mBaja ? mBaja[1] : "");
+
+  if (!diff){
+    const lastNum = up.match(/(\d+)\s*$/);
+    if (lastNum) {
+      return `OBS: AJUSTE AUTOMÁTICO | STOCK REAL: ${stockReal} | SISTEMA: ${sistema} | ${isEntrada ? "SE DAN DE ALTA" : "SE DAN DE BAJA"} ${lastNum[1]}`;
+    }
+    return obs;
+  }
+
+  return `OBS: AJUSTE AUTOMÁTICO | STOCK REAL: ${stockReal} | SISTEMA: ${sistema} | ${isEntrada ? "SE DAN DE ALTA" : "SE DAN DE BAJA"} ${diff}`;
+}
+
+function fmtUsuario_(u){
+  const x = String(u || "").trim();
+  return x ? x.toUpperCase() : "";
+}
+
     function classifyMov_(it){
       const tipo = String(it.tipo_mov||"").toUpperCase();
       const obs = String(it.observacion||"").toUpperCase();
@@ -998,24 +1036,32 @@
         }
 
         for (const it of items){
-          const fecha = fmtFecha(it.timestamp);
-          let tipoMov = String(it.tipo_mov||"");
-          const isAjuste = String(it.observacion||"").toUpperCase().includes("AJUSTE AUTOMÁTICO");
-          if (isAjuste) tipoMov = `${tipoMov} | AJUSTE`;
+  const fecha = fmtFecha(it.timestamp);
 
-          const prod = String(it.descripcion||"");
-          const cant = Number(it.cantidad||0);
-          const obs = String(it.observacion||"");
+  let tipoMov = String(it.tipo_mov||"");
+  const prod = String(it.descripcion||"");
+  const cant = Number(it.cantidad||0);
 
-          const div = document.createElement("div");
-          div.className = "listItem " + classifyMov_(it);
-          div.innerHTML = `
-            <div class="liTop"><div>${fecha}</div><div>${tipoMov}</div></div>
-            <div class="liSub">${prod}</div>
-            <div class="liSub">CANTIDAD: ${cant}${obs ? " | OBS: " + obs : ""}</div>
-          `;
-          listContainer.appendChild(div);
-        }
+  const usuario = fmtUsuario_(it.usuario); // 👈 columna "usuario" desde hoja movimientos
+  const obsRaw = String(it.observacion||"");
+
+  const isAjuste = obsRaw.toUpperCase().includes("AJUSTE AUTOMÁTICO");
+  if (isAjuste) tipoMov = `${tipoMov} | AJUSTE`;
+
+  const obsFmt = isAjuste
+    ? normalizeObsForAjuste_(obsRaw, it.tipo_mov)
+    : (obsRaw ? `OBS: ${obsRaw}` : "");
+
+  const div = document.createElement("div");
+  div.className = "listItem " + classifyMov_(it);
+
+  div.innerHTML = `
+    <div class="liTop"><div>${fecha}</div><div>${tipoMov}</div></div>
+    <div class="liSub">${prod}</div>
+    <div class="liSub">CANTIDAD: ${cant}${usuario ? " | USUARIO: " + usuario : ""}${obsFmt ? " | " + obsFmt : ""}</div>
+  `;
+  listContainer.appendChild(div);
+}
 
         setBusySuccess("✅ LISTO");
         setTimeout(()=> hideBusy(), 250);
@@ -1302,6 +1348,7 @@
   </script>
 </body>
 </html>
+
 
 
 
