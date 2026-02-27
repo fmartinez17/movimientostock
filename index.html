@@ -21,45 +21,40 @@
     body{margin:0;background:var(--bg);font-family:Arial,sans-serif;color:var(--text);text-transform:uppercase}
     .wrap{max-width:560px;margin:0 auto;padding:16px}
 
-/* ===== FIX USER BAR ===== */
-.userBar{
-  display:flex;
-  align-items:center;
-  width:100%;
-  gap:10px;
-  margin-bottom:10px;
-}
+    /* ===== FIX USER BAR ===== */
+    .userBar{
+      display:flex;
+      align-items:center;
+      width:100%;
+      gap:10px;
+      margin-bottom:10px;
+    }
+    .userName{
+      flex:1;
+      min-width:0;
+      font-weight:900;
+      letter-spacing:.4px;
+      color:var(--brand);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .logoutBtn{
+      width:auto !important;
+      margin-top:0 !important;
+      padding:8px 10px !important;
+      border:none;
+      background:transparent;
+      cursor:pointer;
+      font-size:20px;
+      line-height:1;
+      border-radius:10px;
+      margin-left:auto;
+      flex:0 0 auto;
+    }
+    .logoutBtn:hover{ background:rgba(11,45,92,.06) }
+    .logoutBtn:active{ transform:scale(.98) }
 
-.userName{
-  flex:1;
-  min-width:0;
-  font-weight:900;
-  letter-spacing:.4px;
-  color:var(--brand);
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-
-/* IMPORTANTE: pisar el width:100% y margin-top del button global */
-.logoutBtn{
-  width:auto !important;        /* ✅ evita que ocupe toda la fila */
-  margin-top:0 !important;      /* ✅ evita que baje y rompa el layout */
-  padding:8px 10px !important;
-
-  border:none;
-  background:transparent;
-  cursor:pointer;
-  font-size:20px;
-  line-height:1;
-  border-radius:10px;
-
-  margin-left:auto;             /* ✅ al margen derecho */
-  flex:0 0 auto;
-}
-.logoutBtn:hover{ background:rgba(11,45,92,.06) }
-.logoutBtn:active{ transform:scale(.98) }
-    
     .header{
       background:linear-gradient(135deg,var(--brand),var(--brand2));
       color:#fff;border-radius:var(--radius);
@@ -92,7 +87,6 @@
     }
     .btn[disabled]{opacity:.45;cursor:not-allowed;box-shadow:none}
 
-    /* ===== BOTONES BLOQUE (VERTICAL) ===== */
     .navBlocks{display:flex;flex-direction:column;gap:10px;margin-top:0}
     .navBlocks button{width:100%}
 
@@ -127,8 +121,23 @@
     .listItem.adj{ background:rgba(240,180,0,.14); border-color:rgba(240,180,0,.28); }
 
     .liTop{display:flex;justify-content:space-between;gap:10px;font-weight:900}
+    .liTopRight{display:flex;align-items:center;gap:8px;justify-content:flex-end}
     .liSub{margin-top:6px;color:var(--muted);font-weight:800;font-size:12px;line-height:1.35}
     ::placeholder{color:rgba(11,45,92,.45)}
+
+    /* ===== BADGES ===== */
+    .badge{
+      font-size:10px;
+      font-weight:900;
+      padding:4px 8px;
+      border-radius:999px;
+      letter-spacing:.6px;
+      display:inline-block;
+      border:1px solid rgba(11,45,92,.18);
+    }
+    .badgeIn{ background:rgba(15,122,58,.18); color:#0F7A3A; }
+    .badgeOut{ background:rgba(176,0,32,.16); color:#B00020; }
+    .badgeAdj{ background:rgba(240,180,0,.25); color:#7A5A00; }
 
     /* ===== PRODUCTOS LISTA ===== */
     .prodRow{
@@ -150,7 +159,7 @@
     .prodStockLbl{font-weight:900;font-size:11px;letter-spacing:.6px;color:rgba(176,0,32,.90)}
     .prodStockNum{font-weight:900;font-size:22px;color:rgba(176,0,32,.96);margin-top:3px}
 
-    /* ===== POPUP BUSY (cargando / ok / error) ===== */
+    /* ===== POPUP BUSY ===== */
     .busyModal{
       position:fixed;
       inset:0;
@@ -249,7 +258,7 @@
 <body>
   <div class="wrap">
 
-    <!-- USER BAR (solo cuando está logueado) -->
+    <!-- USER BAR -->
     <div id="userBar" class="userBar" style="display:none;">
       <div id="userName" class="userName">👤</div>
       <button id="btnLogout" class="logoutBtn" type="button" title="CERRAR SESIÓN">⏻</button>
@@ -278,8 +287,6 @@
 
     <!-- SCREEN: FORM -->
     <div id="screenForm" class="card" style="display:none;">
-
-      <!-- BOTONES BLOQUE INDEPENDIENTES (NO COLUMNAS) -->
       <div class="navBlocks" style="margin-top:0;">
         <button id="btnVerMovs" type="button" class="btn-secondary">📋 MOVIMIENTOS</button>
         <button id="btnVerProds" type="button" class="btn-secondary">📦 PRODUCTOS</button>
@@ -498,22 +505,17 @@
     }
 
     function paintUserBar_(u){
-  if (!userBarEl || !userNameEl) {
-    console.error("USER BAR DOM NO ENCONTRADO", { userBarEl, userNameEl });
-    return;
-  }
-  const full = `${u.nombre||""} ${u.apellido||""}`.trim().toUpperCase();
-  userNameEl.textContent = `👤 ${full || (u.usuario||"") || "USUARIO"}`;
-  userBarEl.style.display = "flex";
-}
-    
+      const full = `${u.nombre||""} ${u.apellido||""}`.trim().toUpperCase();
+      userNameEl.textContent = `👤 ${full || (u.usuario||"") || "USUARIO"}`;
+      userBarEl.style.display = "flex";
+    }
 
     // ===== STATE =====
-    let currentProducto = null;   // { sku, descripcion }
+    let currentProducto = null;
     let currentBarcode = "";
-    let currentStock = null;      // number
+    let currentStock = null;
 
-    const memLookup = new Map(); // barcode -> {sku, descripcion, stock, t}
+    const memLookup = new Map();
 
     // scanner
     let stream = null;
@@ -522,7 +524,7 @@
     let rafId = null;
     let lastCode = "";
     let sameCount = 0;
-    let scanTarget = "MOV"; // "MOV" | "ADD"
+    let scanTarget = "MOV";
 
     // popup mínimo visible
     let busyShownAt = 0;
@@ -663,13 +665,13 @@
     async function apiPost_(payload){
       payload.secret = SECRET;
       payload.token = getToken();
-    
+
       const res = await fetch(APPS_SCRIPT_URL, {
         method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" }, // ✅ evita preflight CORS
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify(payload)
       });
-    
+
       const j = await res.json();
       if (!j.ok) throw new Error(j.error || "ERROR");
       return j;
@@ -690,50 +692,48 @@
     }
 
     function showApp_(){
-  screenLogin.style.display="none";
-  screenForm.style.display="block";
-  screenList.style.display="none";
-  screenAdd.style.display="none";
-  screenProds.style.display="none";
-  userBarEl.style.display = "flex";
-  stopScan();
-  resetMovForm_();
-
-  paintUserBar_(getUserCache_()); // ✅ fuerza mostrar nombre
-}
+      screenLogin.style.display="none";
+      screenForm.style.display="block";
+      screenList.style.display="none";
+      screenAdd.style.display="none";
+      screenProds.style.display="none";
+      userBarEl.style.display = "flex";
+      stopScan();
+      resetMovForm_();
+      paintUserBar_(getUserCache_());
+    }
 
     async function whoAmI_(){
-  const j = await apiGet_({ action:"whoami" });
-  setUserCache_({ usuario:j.usuario, nombre:j.nombre, apellido:j.apellido });
-  paintUserBar_({ usuario:j.usuario, nombre:j.nombre, apellido:j.apellido });
-  return j;
-}
+      const j = await apiGet_({ action:"whoami" });
+      setUserCache_({ usuario:j.usuario, nombre:j.nombre, apellido:j.apellido });
+      paintUserBar_({ usuario:j.usuario, nombre:j.nombre, apellido:j.apellido });
+      return j;
+    }
 
     async function login_(){
       const usuario = String(loginUserEl.value||"").trim().toUpperCase();
       const clave = String(loginPassEl.value||"").trim();
-    
+
       if (!usuario || !clave){
         await popupError_("FALTAN DATOS", 900);
         return;
       }
-    
+
       btnLogin.disabled = true;
       try{
         showBusy("INICIANDO SESIÓN...");
-    
-        const j = await apiPost_({ action:"login", usuario, clave });
-    
-        setToken(j.token || "");
 
+        const j = await apiPost_({ action:"login", usuario, clave });
+
+        setToken(j.token || "");
         setUserCache_({ usuario:j.usuario, nombre:j.nombre, apellido:j.apellido });
         paintUserBar_({ usuario:j.usuario, nombre:j.nombre, apellido:j.apellido });
-    
+
         setBusySuccess("✅ OK");
         setTimeout(()=> hideBusy(), 450);
-    
+
         showApp_();
-    
+
       }catch(e){
         setBusyError("❌ ERROR");
         setTimeout(()=> hideBusy(), 650);
@@ -904,9 +904,12 @@
         const altaBaja = diff > 0
           ? `SE DAN DE ALTA ${Math.abs(diff)}`
           : `SE DAN DE BAJA ${Math.abs(diff)}`;
-        
-        const audit = `STOCK REAL: ${stockReal} | STOCK SISTEMA: ${currentStock} | ${altaBaja}`;
+
+        // ✅ mantenemos marcador "AJUSTE AUTOMÁTICO" solo para detectar en la lista,
+        // pero la UI lo formatea y NO lo muestra.
+        const audit = `AJUSTE AUTOMÁTICO | STOCK REAL: ${stockReal} | STOCK SISTEMA: ${currentStock} | ${altaBaja}`;
         observacion = obsUser ? (audit + " | " + obsUser) : audit;
+
       }else{
         if (!cantidadRaw || isNaN(cantidad) || cantidad <= 0){
           await popupError_("FALTAN DATOS", 900);
@@ -960,60 +963,48 @@
       }catch{ return iso; }
     }
 
-    function normalizeObsForAjuste_(obsRaw, tipoMov){
-  const up = String(obsRaw || "").toUpperCase();
+    function normalizeObsForAjuste_(obsRaw){
+      const up = String(obsRaw || "").toUpperCase();
 
-  // Solo procesamos si es ajuste
-  if (!up.includes("AJUSTE")) return "";
+      // si no parece ajuste, no tocamos
+      if (!up.includes("AJUSTE")) return "";
 
-  // STOCK REAL
-  const mReal = up.match(/STOCK\s*REAL\s*:\s*(\d+)/);
+      const mReal = up.match(/STOCK\s*REAL\s*:\s*(\d+)/);
+      const mSis  = up.match(/STOCK\s*SISTEMA\s*:\s*(\d+)/) || up.match(/\bSISTEMA\s*:\s*(\d+)/);
 
-  // STOCK SISTEMA (puede venir como "STOCK SISTEMA:" o "SISTEMA:")
-  const mSis =
-    up.match(/STOCK\s*SISTEMA\s*:\s*(\d+)/) ||
-    up.match(/\bSISTEMA\s*:\s*(\d+)/) ||
-    up.match(/STOCK\s*DEL\s*SISTEMA\s*:\s*(\d+)/);
+      if (!mReal || !mSis) return "";
 
-  if (!mReal || !mSis) return "";
+      const stockReal = Number(mReal[1]);
+      const sistema   = Number(mSis[1]);
 
-  const stockReal = Number(mReal[1]);
-  const sistema   = Number(mSis[1]);
+      const mBaja = up.match(/SE\s*DAN\s*DE\s*BAJA\s*(\d+)/);
+      const mAlta = up.match(/SE\s*DAN\s*DE\s*ALTA\s*(\d+)/);
 
-  // Caso A: viene "SE DAN DE BAJA 23" / "SE DAN DE ALTA 27"
-  const mBaja = up.match(/SE\s*DAN\s*DE\s*BAJA\s*(\d+)/);
-  const mAlta = up.match(/SE\s*DAN\s*DE\s*ALTA\s*(\d+)/);
+      let linea2 = "";
+      if (mBaja) linea2 = `SE DAN DE BAJA ${mBaja[1]}`;
+      else if (mAlta) linea2 = `SE DAN DE ALTA ${mAlta[1]}`;
+      else linea2 = "AJUSTE";
 
-  // Caso B: viene DIF:-23 / DIF: 27 / DIFERENCIA:-23
-  const mDif = up.match(/\bDIF(?:ERENCIA)?\s*:\s*(-?\d+)/);
+      return `STOCK REAL: ${stockReal} | STOCK SISTEMA: ${sistema}<br>${linea2}`;
+    }
 
-  let linea2 = "";
+    function fmtUsuario_(u){
+      const x = String(u || "").trim();
+      return x ? x.toUpperCase() : "";
+    }
 
-  if (mBaja) linea2 = `SE DAN DE BAJA ${mBaja[1]}`;
-  else if (mAlta) linea2 = `SE DAN DE ALTA ${mAlta[1]}`;
-  else if (mDif){
-    const diff = Number(mDif[1]);
-    if (diff > 0) linea2 = `SE DAN DE ALTA ${Math.abs(diff)}`;
-    else if (diff < 0) linea2 = `SE DAN DE BAJA ${Math.abs(diff)}`;
-    else linea2 = `SIN DIFERENCIA`;
-  } else {
-    // fallback por tipo_mov (si no encontramos nada)
-    const t = String(tipoMov || "").toUpperCase();
-    linea2 = (t === "ENTRADA") ? "SE DAN DE ALTA" : "SE DAN DE BAJA";
-  }
-
-  return `STOCK REAL: ${stockReal} | STOCK SISTEMA: ${sistema}<br>${linea2}`;
-}
-
-function fmtUsuario_(u){
-  const x = String(u || "").trim();
-  return x ? x.toUpperCase() : "";
-}
+    function badgeHtml_(tipoMov, isAjuste){
+      const t = String(tipoMov || "").toUpperCase();
+      if (isAjuste) return `<span class="badge badgeAdj">AJUSTE</span>`;
+      if (t === "ENTRADA") return `<span class="badge badgeIn">ENTRADA</span>`;
+      if (t === "SALIDA")  return `<span class="badge badgeOut">SALIDA</span>`;
+      return ``;
+    }
 
     function classifyMov_(it){
       const tipo = String(it.tipo_mov||"").toUpperCase();
       const obs = String(it.observacion||"").toUpperCase();
-      if (obs.includes("AJUSTE AUTOMÁTICO")) return "adj";
+      if (obs.includes("AJUSTE")) return "adj";
       if (tipo === "ENTRADA") return "in";
       if (tipo === "SALIDA") return "out";
       return "";
@@ -1048,35 +1039,39 @@ function fmtUsuario_(u){
         }
 
         for (const it of items){
-          console.log("MOV ITEM:", it); 
-  const fecha = fmtFecha(it.timestamp);
+          const fecha = fmtFecha(it.timestamp);
 
-  let tipoMov = String(it.tipo_mov||"");
-  const prod = String(it.descripcion||"");
-  const cant = Number(it.cantidad||0);
+          const tipoMov = String(it.tipo_mov||"");
+          const prod = String(it.descripcion||"");
+          const cant = Number(it.cantidad||0);
 
-  const usuario = fmtUsuario_(it.usuario); // 👈 columna "usuario" desde hoja movimientos
-  const obsRaw = String(it.observacion||"");
+          const usuario = fmtUsuario_(it.usuario);
+          const obsRaw = String(it.observacion||"");
 
-  const isAjuste = obsRaw.toUpperCase().includes("AJUSTE AUTOMÁTICO");
-  if (isAjuste) tipoMov = `${tipoMov} | AJUSTE`;
+          const isAjuste = obsRaw.toUpperCase().includes("AJUSTE");
+          const obsFmt = isAjuste
+            ? normalizeObsForAjuste_(obsRaw)
+            : (obsRaw ? `OBS: ${obsRaw}` : "");
 
-  const obsFmt = isAjuste
-    ? normalizeObsForAjuste_(obsRaw, it.tipo_mov)
-    : (obsRaw ? `OBS: ${obsRaw}` : "");
+          const div = document.createElement("div");
+          div.className = "listItem " + classifyMov_(it);
 
-  const div = document.createElement("div");
-  div.className = "listItem " + classifyMov_(it);
+          div.innerHTML = `
+            <div class="liTop">
+              <div>${fecha}</div>
+              <div class="liTopRight">
+                ${badgeHtml_(tipoMov, isAjuste)}
+              </div>
+            </div>
 
-  div.innerHTML = `
-    <div class="liTop"><div>${fecha}</div><div>${tipoMov}</div></div>
-  <div class="liSub">${prod}</div>
-  ${!isAjuste ? `<div class="liSub">CANTIDAD: ${cant}</div>` : ``}
-  ${usuario ? `<div class="liSub">USUARIO: ${usuario}</div>` : ``}
-  ${obsFmt ? `<div class="liSub">${obsFmt}</div>` : ``}
-`;
-  listContainer.appendChild(div);
-}
+            <div class="liSub">${prod}</div>
+
+            ${!isAjuste ? `<div class="liSub">CANTIDAD: ${cant}</div>` : ``}
+            ${usuario ? `<div class="liSub">USUARIO: ${usuario}</div>` : ``}
+            ${obsFmt ? `<div class="liSub">${obsFmt}</div>` : ``}
+          `;
+          listContainer.appendChild(div);
+        }
 
         setBusySuccess("✅ LISTO");
         setTimeout(()=> hideBusy(), 250);
@@ -1344,13 +1339,12 @@ function fmtUsuario_(u){
       try{
         if (getToken()){
           userBarEl.style.display = "flex";
-          paintUserBar_(getUserCache_()); // <-- muestra algo al instante
+          paintUserBar_(getUserCache_());
           showApp_();
           showBusy("CARGANDO SESIÓN...");
           await whoAmI_();
           setBusySuccess("✅ OK");
           setTimeout(()=> hideBusy(), 300);
-          
         }else{
           showLogin_();
         }
@@ -1363,21 +1357,3 @@ function fmtUsuario_(u){
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
