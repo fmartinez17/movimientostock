@@ -257,7 +257,6 @@
 
 <body>
   <div class="wrap">
-
     <!-- USER BAR -->
     <div id="userBar" class="userBar" style="display:none;">
       <div id="userName" class="userName">👤</div>
@@ -272,7 +271,7 @@
       <div style="font-weight:900;opacity:.95;font-size:12px;letter-spacing:.5px;">STOCK</div>
     </div>
 
-    <!-- SCREEN: LOGIN -->
+    <!-- LOGIN -->
     <div id="screenLogin" class="card" style="display:none;">
       <label>USUARIO</label>
       <input id="login_user" placeholder="INGRESE USUARIO" />
@@ -281,11 +280,10 @@
       <input id="login_pass" type="password" placeholder="INGRESE CLAVE" />
 
       <button id="btnLogin" type="button" class="btn">✅ INICIAR SESIÓN</button>
-
       <div id="loginMsg" class="msg"></div>
     </div>
 
-    <!-- SCREEN: FORM -->
+    <!-- FORM -->
     <div id="screenForm" class="card" style="display:none;">
       <div class="navBlocks" style="margin-top:0;">
         <button id="btnVerMovs" type="button" class="btn-secondary">📋 MOVIMIENTOS</button>
@@ -322,11 +320,10 @@
       <textarea id="observacion" placeholder="NOTAS..."></textarea>
 
       <button id="btnGuardar" type="button" class="btn" disabled>✅ GUARDAR</button>
-
       <div id="msg" class="msg"></div>
     </div>
 
-    <!-- SCREEN: MOVIMIENTOS -->
+    <!-- MOVIMIENTOS -->
     <div id="screenList" class="card" style="display:none;">
       <div class="filterRow" style="margin-top:0;">
         <button id="btnVolver" type="button" class="btn-secondary">⬅️ VOLVER</button>
@@ -353,7 +350,7 @@
       <div id="listContainer"></div>
     </div>
 
-    <!-- SCREEN: PRODUCTOS -->
+    <!-- PRODUCTOS -->
     <div id="screenProds" class="card" style="display:none;">
       <div class="filterRow" style="margin-top:0;">
         <button id="btnBackProds" type="button" class="btn-secondary">⬅️ VOLVER</button>
@@ -369,7 +366,7 @@
       <div id="prodsContainer"></div>
     </div>
 
-    <!-- SCREEN: AGREGAR PRODUCTO -->
+    <!-- AGREGAR PRODUCTO -->
     <div id="screenAdd" class="card" style="display:none;">
       <div class="filterRow" style="margin-top:0;">
         <button id="btnBackAdd" type="button" class="btn-secondary">⬅️ VOLVER</button>
@@ -392,7 +389,6 @@
       <input id="add_desc" placeholder="INGRESE DESCRIPCIÓN" />
 
       <button id="btnGuardarProd" type="button" class="btn">✅ GUARDAR PRODUCTO</button>
-
       <div id="addMsg" class="msg"></div>
     </div>
   </div>
@@ -495,14 +491,8 @@
     const prodsContainer = document.getElementById("prodsContainer");
 
     const LS_USER = "publi_stock_user";
-
-    function setUserCache_(u){
-      localStorage.setItem(LS_USER, JSON.stringify(u || {}));
-    }
-    function getUserCache_(){
-      try{ return JSON.parse(localStorage.getItem(LS_USER) || "{}"); }
-      catch{ return {}; }
-    }
+    function setUserCache_(u){ localStorage.setItem(LS_USER, JSON.stringify(u || {})); }
+    function getUserCache_(){ try{ return JSON.parse(localStorage.getItem(LS_USER) || "{}"); }catch{ return {}; } }
 
     function paintUserBar_(u){
       const full = `${u.nombre||""} ${u.apellido||""}`.trim().toUpperCase();
@@ -514,7 +504,6 @@
     let currentProducto = null;
     let currentBarcode = "";
     let currentStock = null;
-
     const memLookup = new Map();
 
     // scanner
@@ -531,11 +520,7 @@
     const BUSY_MIN_MS = 250;
 
     function resetBusyStyle(){ busyBoxEl.classList.remove("success","error"); }
-    function popBusy(){
-      busyBoxEl.classList.remove("pop");
-      void busyBoxEl.offsetWidth;
-      busyBoxEl.classList.add("pop");
-    }
+    function popBusy(){ busyBoxEl.classList.remove("pop"); void busyBoxEl.offsetWidth; busyBoxEl.classList.add("pop"); }
     function showBusy(text="PROCESANDO..."){
       busyShownAt = Date.now();
       resetBusyStyle();
@@ -549,45 +534,15 @@
       setTimeout(()=>{ busyModalEl.style.display = "none"; resetBusyStyle(); }, wait);
     }
     function setBusyText(text=""){ busyTextEl.textContent = (text||"").toString().toUpperCase(); }
-    function setBusySuccess(text="✅ OK"){
-      busyBoxEl.classList.add("success");
-      setBusyText(text);
-      popBusy();
-      navigator.vibrate?.(60);
-    }
-    function setBusyError(text="❌ ERROR"){
-      busyBoxEl.classList.add("error");
-      setBusyText(text);
-      popBusy();
-      navigator.vibrate?.(120);
-    }
-    async function popupError_(text, ms=900){
-      showBusy(text);
-      setBusyError(text);
-      await new Promise(r=>setTimeout(r, ms));
-      hideBusy();
-    }
+    function setBusySuccess(text="✅ OK"){ busyBoxEl.classList.add("success"); setBusyText(text); popBusy(); navigator.vibrate?.(60); }
+    function setBusyError(text="❌ ERROR"){ busyBoxEl.classList.add("error"); setBusyText(text); popBusy(); navigator.vibrate?.(120); }
+    async function popupError_(text, ms=900){ showBusy(text); setBusyError(text); await new Promise(r=>setTimeout(r, ms)); hideBusy(); }
 
-    function setMsg(t="", err=false){
-      msgEl.className = "msg" + (err ? " err" : "");
-      msgEl.textContent = (t||"").toString().toUpperCase();
-    }
-    function setListMsg(t="", err=false){
-      listMsgEl.className = "msg" + (err ? " err" : "");
-      listMsgEl.textContent = (t||"").toString().toUpperCase();
-    }
-    function setAddMsg(t="", err=false){
-      addMsgEl.className = "msg" + (err ? " err" : "");
-      addMsgEl.textContent = (t||"").toString().toUpperCase();
-    }
-    function setLoginMsg(t="", err=false){
-      loginMsgEl.className = "msg" + (err ? " err" : "");
-      loginMsgEl.textContent = (t||"").toString().toUpperCase();
-    }
-    function setProdsMsg(t="", err=false){
-      prodsMsgEl.className = "msg" + (err ? " err" : "");
-      prodsMsgEl.textContent = (t||"").toString().toUpperCase();
-    }
+    function setMsg(t="", err=false){ msgEl.className = "msg" + (err ? " err" : ""); msgEl.textContent = (t||"").toString().toUpperCase(); }
+    function setListMsg(t="", err=false){ listMsgEl.className = "msg" + (err ? " err" : ""); listMsgEl.textContent = (t||"").toString().toUpperCase(); }
+    function setAddMsg(t="", err=false){ addMsgEl.className = "msg" + (err ? " err" : ""); addMsgEl.textContent = (t||"").toString().toUpperCase(); }
+    function setLoginMsg(t="", err=false){ loginMsgEl.className = "msg" + (err ? " err" : ""); loginMsgEl.textContent = (t||"").toString().toUpperCase(); }
+    function setProdsMsg(t="", err=false){ prodsMsgEl.className = "msg" + (err ? " err" : ""); prodsMsgEl.textContent = (t||"").toString().toUpperCase(); }
 
     function resetTipoYcantidadUI_(){
       tipoMovEl.value = "";
@@ -722,7 +677,6 @@
       btnLogin.disabled = true;
       try{
         showBusy("INICIANDO SESIÓN...");
-
         const j = await apiPost_({ action:"login", usuario, clave });
 
         setToken(j.token || "");
@@ -731,7 +685,6 @@
 
         setBusySuccess("✅ OK");
         setTimeout(()=> hideBusy(), 450);
-
         showApp_();
 
       }catch(e){
@@ -758,12 +711,8 @@
     }
 
     // ===== LOOKUP / CAT =====
-    async function fetchLookup(barcode){
-      return await apiGet_({ action:"lookup", barcode });
-    }
-    async function catFind(barcode){
-      return await apiGet_({ action:"catfind", barcode });
-    }
+    async function fetchLookup(barcode){ return await apiGet_({ action:"lookup", barcode }); }
+    async function catFind(barcode){ return await apiGet_({ action:"catfind", barcode }); }
 
     async function handleBarcode_MOV(code){
       const clean = String(code||"").trim();
@@ -905,9 +854,8 @@
           ? `SE DAN DE ALTA ${Math.abs(diff)}`
           : `SE DAN DE BAJA ${Math.abs(diff)}`;
 
-        // ✅ mantenemos marcador "AJUSTE AUTOMÁTICO" solo para detectar en la lista,
-        // pero la UI lo formatea y NO lo muestra.
-        const audit = `AJUSTE AUTOMÁTICO | STOCK REAL: ${stockReal} | STOCK SISTEMA: ${currentStock} | ${altaBaja}`;
+        // ✅ guardamos un marcador "AJUSTE |" pero la UI NO lo muestra
+        const audit = `AJUSTE | STOCK REAL: ${stockReal} | STOCK SISTEMA: ${currentStock} | ${altaBaja}`;
         observacion = obsUser ? (audit + " | " + obsUser) : audit;
 
       }else{
@@ -963,11 +911,16 @@
       }catch{ return iso; }
     }
 
+    // ✅ Detecta/forma AJUSTE y devuelve EXACTAMENTE lo que querés mostrar
     function normalizeObsForAjuste_(obsRaw){
       const up = String(obsRaw || "").toUpperCase();
 
+      const hasReal = /STOCK\s*REAL\s*:\s*\d+/.test(up);
+      const hasSis  = /(STOCK\s*SISTEMA\s*:\s*\d+|\bSISTEMA\s*:\s*\d+)/.test(up);
+      const hasAltaBaja = /SE\s*DAN\s*DE\s*(ALTA|BAJA)\s*\d+/.test(up);
+
       // si no parece ajuste, no tocamos
-      if (!up.includes("AJUSTE")) return "";
+      if (!(hasReal && hasSis && (hasAltaBaja || up.includes("AJUSTE")))) return "";
 
       const mReal = up.match(/STOCK\s*REAL\s*:\s*(\d+)/);
       const mSis  = up.match(/STOCK\s*SISTEMA\s*:\s*(\d+)/) || up.match(/\bSISTEMA\s*:\s*(\d+)/);
@@ -993,6 +946,14 @@
       return x ? x.toUpperCase() : "";
     }
 
+    function isAjusteByObs_(obsRaw){
+      const up = String(obsRaw || "").toUpperCase();
+      const hasReal = /STOCK\s*REAL\s*:\s*\d+/.test(up);
+      const hasSis  = /(STOCK\s*SISTEMA\s*:\s*\d+|\bSISTEMA\s*:\s*\d+)/.test(up);
+      const hasAltaBaja = /SE\s*DAN\s*DE\s*(ALTA|BAJA)\s*\d+/.test(up);
+      return (hasReal && hasSis && (hasAltaBaja || up.includes("AJUSTE")));
+    }
+
     function badgeHtml_(tipoMov, isAjuste){
       const t = String(tipoMov || "").toUpperCase();
       if (isAjuste) return `<span class="badge badgeAdj">AJUSTE</span>`;
@@ -1003,8 +964,8 @@
 
     function classifyMov_(it){
       const tipo = String(it.tipo_mov||"").toUpperCase();
-      const obs = String(it.observacion||"").toUpperCase();
-      if (obs.includes("AJUSTE")) return "adj";
+      const obs = String(it.observacion||"");
+      if (isAjusteByObs_(obs)) return "adj";
       if (tipo === "ENTRADA") return "in";
       if (tipo === "SALIDA") return "out";
       return "";
@@ -1041,14 +1002,15 @@
         for (const it of items){
           const fecha = fmtFecha(it.timestamp);
 
-          const tipoMov = String(it.tipo_mov||"");
+          const tipoMov = String(it.tipo_mov||"").toUpperCase(); // ENTRADA / SALIDA
           const prod = String(it.descripcion||"");
           const cant = Number(it.cantidad||0);
 
           const usuario = fmtUsuario_(it.usuario);
           const obsRaw = String(it.observacion||"");
 
-          const isAjuste = obsRaw.toUpperCase().includes("AJUSTE");
+          const isAjuste = isAjusteByObs_(obsRaw);
+
           const obsFmt = isAjuste
             ? normalizeObsForAjuste_(obsRaw)
             : (obsRaw ? `OBS: ${obsRaw}` : "");
@@ -1056,12 +1018,16 @@
           const div = document.createElement("div");
           div.className = "listItem " + classifyMov_(it);
 
+          // ✅ SALIDA + BADGE / ENTRADA + BADGE
+          const topRight = `
+            <span>${tipoMov || ""}</span>
+            ${badgeHtml_(tipoMov, isAjuste)}
+          `;
+
           div.innerHTML = `
             <div class="liTop">
               <div>${fecha}</div>
-              <div class="liTopRight">
-                ${badgeHtml_(tipoMov, isAjuste)}
-              </div>
+              <div class="liTopRight">${topRight}</div>
             </div>
 
             <div class="liSub">${prod}</div>
