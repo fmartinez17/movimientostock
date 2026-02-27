@@ -396,7 +396,7 @@
 
   <script>
     // ===== CONFIG =====
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxSqb8U6ygAt04sHKlEdHOWsyhg_3z77S5jpB2c7N7qrvmiMLYB6Nyp5_j-hK3O4Qtd/exec";
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEKpBZms007uVHgh5XkjDUWcrQkMJN8zLdaBPTEd9PLS9_yJBLq1K_nYg0HYkOFE9m/exec";
     const SECRET = "PUBLI_2026_Stock!";
     const REQUIRED_SAME_READS = 2;
 
@@ -633,11 +633,14 @@
       payload.secret = SECRET;
       payload.token = getToken();
       const res = await fetch(APPS_SCRIPT_URL, {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify(payload)
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" }, // ✅ evita preflight
+        body: JSON.stringify({ action:"login", secret:SECRET, usuario, clave })
       });
       const j = await res.json();
+        
+      });
+      const j = await res.json()
       if (!j.ok) throw new Error(j.error || "ERROR");
       return j;
     }
@@ -675,21 +678,36 @@
     }
 
     async function login_(){
-      const u = String(loginUserEl.value||"").trim().toUpperCase();
-      const p = String(loginPassEl.value||"").trim();
-      if (!u || !p){
+      const usuario = String(loginUserEl.value||"").trim().toUpperCase();
+      const clave = String(loginPassEl.value||"").trim();
+    
+      if (!usuario || !clave){
         await popupError_("FALTAN DATOS", 900);
         return;
       }
+    
       btnLogin.disabled = true;
       try{
         showBusy("INICIANDO SESIÓN...");
-        const j = await apiPost_({ action:"login", usuario:u, clave:p });
+    
+        const payload = { action:"login", secret:SECRET, usuario, clave };
+    
+        const res = await fetch(APPS_SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" }, // ✅ clave anti-preflight
+          body: JSON.stringify(payload)
+        });
+    
+        const j = await res.json(); // ✅ ahora sí podés leer JSON
+        if (!j.ok) throw new Error(j.error || "ERROR");
+    
         setToken(j.token || "");
-        await whoAmI_();
+        setUserActive({ nombre:j.nombre, apellido:j.apellido, usuario:j.usuario });
+    
         setBusySuccess("✅ OK");
         setTimeout(()=> hideBusy(), 450);
         showApp_();
+    
       }catch(e){
         setBusyError("❌ ERROR");
         setTimeout(()=> hideBusy(), 650);
@@ -1255,4 +1273,5 @@
   </script>
 </body>
 </html>
+
 
