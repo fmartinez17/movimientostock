@@ -632,15 +632,14 @@
     async function apiPost_(payload){
       payload.secret = SECRET;
       payload.token = getToken();
+    
       const res = await fetch(APPS_SCRIPT_URL, {
         method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" }, // ✅ evita preflight
-        body: JSON.stringify({ action:"login", secret:SECRET, usuario, clave })
+        headers: { "Content-Type": "text/plain;charset=utf-8" }, // ✅ evita preflight CORS
+        body: JSON.stringify(payload)
       });
+    
       const j = await res.json();
-        
-      });
-      const j = await res.json()
       if (!j.ok) throw new Error(j.error || "ERROR");
       return j;
     }
@@ -690,22 +689,16 @@
       try{
         showBusy("INICIANDO SESIÓN...");
     
-        const payload = { action:"login", secret:SECRET, usuario, clave };
-    
-        const res = await fetch(APPS_SCRIPT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain;charset=utf-8" }, // ✅ clave anti-preflight
-          body: JSON.stringify(payload)
-        });
-    
-        const j = await res.json(); // ✅ ahora sí podés leer JSON
-        if (!j.ok) throw new Error(j.error || "ERROR");
+        const j = await apiPost_({ action:"login", usuario, clave });
     
         setToken(j.token || "");
-        setUserActive({ nombre:j.nombre, apellido:j.apellido, usuario:j.usuario });
+    
+        const full = `${j.nombre||""} ${j.apellido||""}`.trim().toUpperCase();
+        userNameEl.textContent = `👤 ${full || (j.usuario||"")}`;
     
         setBusySuccess("✅ OK");
         setTimeout(()=> hideBusy(), 450);
+    
         showApp_();
     
       }catch(e){
@@ -1273,5 +1266,6 @@
   </script>
 </body>
 </html>
+
 
 
