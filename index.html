@@ -997,25 +997,12 @@
     else if (diff < 0) linea2 = `SE DAN DE BAJA ${Math.abs(diff)}`;
     else linea2 = `SIN DIFERENCIA`;
   } else {
-    // fallback por tipo_mov
+    // fallback por tipo_mov (si no encontramos nada)
     const t = String(tipoMov || "").toUpperCase();
     linea2 = (t === "ENTRADA") ? "SE DAN DE ALTA" : "SE DAN DE BAJA";
   }
 
   return `STOCK REAL: ${stockReal} | STOCK SISTEMA: ${sistema}<br>${linea2}`;
-}
-
-  // 2) Si no hay DIF pero hay "SE DIERON..."
-  const t = String(tipoMov || "").toUpperCase();
-  const isEntrada = t === "ENTRADA";
-
-  const n = isEntrada ? (mAlta ? Number(mAlta[1]) : null) : (mBaja ? Number(mBaja[1]) : null);
-  if (n != null){
-    return `OBS: AJUSTE AUTOMÁTICO | STOCK REAL: ${stockReal} | SISTEMA: ${sistema} <br> ${isEntrada ? "SE DAN DE ALTA" : "SE DAN DE BAJA"} ${n}`;
-  }
-
-  // fallback
-  return `OBS: AJUSTE AUTOMÁTICO | STOCK REAL: ${stockReal} | SISTEMA: ${sistema}`;
 }
 
 function fmtUsuario_(u){
@@ -1376,6 +1363,7 @@ function fmtUsuario_(u){
   </script>
 </body>
 </html>
+
 
 
 
